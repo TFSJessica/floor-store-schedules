@@ -50,6 +50,24 @@ header.top .sub{font-size:10px;letter-spacing:.08em;text-transform:uppercase;col
 .sdot.now{background:var(--green);box-shadow:0 0 0 3px rgba(22,163,74,.15)}
 .sdot.done{background:rgba(0,0,0,.15);box-shadow:none}
 .dshort{display:none}@media (max-width:440px){.dlong{display:none}.dshort{display:inline}}
+.sheet.wide{max-width:760px}
+.imp-sum{padding:0 18px 8px;font-size:12px;color:var(--muted)}
+.imp-list{padding:0 12px 6px}
+.imp-store{margin:12px 6px 6px;font-family:"Bebas Neue",sans-serif;font-size:18px;letter-spacing:.1em;color:var(--sc)}
+.imp-row{background:rgba(0,0,0,.025);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:6px}
+.imp-row.skipped{opacity:.5}
+.imp-top{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+.imp-name{font-weight:600;font-size:14px;min-width:0}
+.imp-raw{font-size:11px;color:var(--muted);font-weight:400;margin-top:2px}
+.imp-top select{padding:7px 9px;border-radius:8px;border:1.5px solid rgba(0,0,0,.15);background:#fff;font-size:13px;max-width:100%}
+.imp-e{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:13px;font-weight:600}
+.imp-e input{width:18px;height:18px;accent-color:#1a1a1a;flex:none}
+.imp-e.dup{color:var(--muted)}
+.imp-n{font-size:11px;color:var(--muted);font-weight:500;margin-left:4px}
+.imp-tag{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:rgba(0,0,0,.06);border-radius:999px;padding:2px 7px;margin-left:auto;white-space:nowrap}
+.imp-warn{margin-top:8px;font-size:12px;color:var(--amber);font-weight:600}
+.imp-err{margin-top:8px;font-size:12px;color:var(--red);font-weight:600}
+.imp-foot{position:sticky;bottom:0;background:rgba(255,255,255,.97);padding-top:12px;border-top:1px solid var(--line)}
 .mgr{display:inline-block;margin-left:6px;font-size:9px;font-weight:700;letter-spacing:.08em;background:#1a1a1a;color:#fff;border-radius:5px;padding:2px 5px;vertical-align:1px;flex:none}
 .savenote{text-align:center;font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;color:var(--muted);margin:4px 0 14px}
 .chgmark{width:6px;height:6px;border-radius:50%;background:var(--brand);margin-left:5px;flex:none}
@@ -218,7 +236,7 @@ const DAYS=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 const DAYS_LONG=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
 const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
 const COLORS=["#2d5016","#5c3d11","#1a3a5c","#5c1a2d","#3d2d5c","#1a4a3d","#5c2d1a","#4a1a3d","#5c4a1a","#1a2d5c","#3d5c1a","#2d4a1a"];
-const PTO_TYPES=["Vacation","Sick","Personal","Bereavement","Jury duty","Unpaid","Other"];
+const PTO_TYPES=["PTO","Vacation","Sick","Personal","Bereavement","Jury duty","Unpaid","Other"];
 const LEAVE_TYPES=["Medical leave","FMLA","Maternity / Paternity leave","Workers' comp"];
 const OPEN_END="9999-12-31";
 const isLeave=p=>!!p&&(LEAVE_TYPES.includes(p.type)||p.end===OPEN_END||!!p.returnDate);
@@ -403,7 +421,7 @@ function setStatus(t){S.status=t;const el=document.getElementById("status");if(e
 /* ---------- UI bits ---------- */
 let toastT;
 function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("show"),2200);}
-function openSheet(html){const sh=document.getElementById("sheet");sh.innerHTML=html;document.getElementById("scrim").classList.add("open");}
+function openSheet(html,wide){const sh=document.getElementById("sheet");sh.onclick=null;sh.onchange=null;sh.classList.toggle("wide",!!wide);sh.innerHTML=html;document.getElementById("scrim").classList.add("open");}
 function closeSheet(){document.getElementById("scrim").classList.remove("open");}
 document.getElementById("scrim").addEventListener("click",e=>{if(e.target.id==="scrim")closeSheet();});
 
@@ -575,7 +593,7 @@ function viewPto(){
     ${S.readOnly?"":`<button class="iconbtn" data-delpto="${esc(p.id)}" aria-label="Remove PTO" style="width:32px;height:32px;font-size:14px">✕</button>`}</div>`;};
   const noEmps=!S.stores.some(s=>s.employees.length);
   return `${brandCard()}
-  ${S.readOnly?"":`<div class="card"><div class="card-h"><h3>Add PTO</h3></div>
+  ${S.readOnly?"":`<div class="card"><div class="card-h"><h3>Add PTO</h3><button class="btn ghost sm" id="impOpen" type="button">Paste PTO list</button></div>
   <form class="form" id="ptoForm">
     <label>Employee<select name="emp" required>${noEmps?'<option value="">Add employees first</option>':'<option value="">Choose…</option>'+empOptions()}</select></label>
     <label>Type<select name="type"><optgroup label="Time off">${PTO_TYPES.map(x=>`<option>${x}</option>`).join("")}</optgroup><optgroup label="Leave">${LEAVE_TYPES.map(x=>`<option>${esc(x)}</option>`).join("")}</optgroup></select></label>
@@ -695,6 +713,209 @@ function confirmSheet(title,msg,okLabel,fn){
   sh.querySelector("#okBtn").onclick=()=>{closeSheet();fn();};
 }
 
+/* ---------- paste-to-import monthly PTO list ---------- */
+const MONTH_IDX={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+function normTokens(n){return cleanName(n).toLowerCase().replace(/\(.*?\)/g," ").replace(/['’-]/g,"").replace(/[^a-z\s]/g," ").split(/\s+/).filter(Boolean);}
+function lev(a,b){const d=[...Array(b.length+1).keys()];for(let i=1;i<=a.length;i++){let p=d[0];d[0]=i;for(let j=1;j<=b.length;j++){const t=d[j];d[j]=Math.min(d[j]+1,d[j-1]+1,p+(a[i-1]===b[j-1]?0:1));p=t;}}return d[b.length];}
+function tokSim(a,b){
+  if(a===b)return 3;
+  if(a.length>=3&&b.length>=3){let k=0;while(k<a.length&&k<b.length&&a[k]===b[k])k++;if(k>=3)return 2;}
+  if(a.length>=4&&b.length>=4&&lev(a,b)<=2)return 2;
+  return 0;
+}
+function nameScore(imp,ros){
+  const A=normTokens(imp),B=normTokens(ros);if(!A.length||!B.length)return 0;
+  const first=tokSim(A[0],B[0]),last=A.length>1&&B.length>1?tokSim(A[A.length-1],B[B.length-1]):0;
+  let s=0;for(const a of A){let best=0;for(const b of B)best=Math.max(best,tokSim(a,b));s+=best;}
+  if(first<2&&last<2&&!(B.length===1&&A.includes(B[0])))return 0;
+  return s+(first>=2?1:0)+(last>=2?1:0);
+}
+function bestMatch(name,cands){
+  let best=null,top=0,tie=false;
+  cands.forEach(c=>{const sc=nameScore(name,c.emp.name);if(sc>top){top=sc;best=c;tie=false;}else if(sc&&sc===top)tie=true;});
+  return top>=3&&!tie?best:null;
+}
+function findStore(label){
+  const h=label.toLowerCase().replace(/[^a-z\s]/g," ").replace(/\s+/g," ").trim();
+  if(/^s\s?f$/.test(h))return storeById("san-francisco")||null;
+  return S.stores.find(s=>{const n=s.name.toLowerCase().replace(/[^a-z\s]/g," ").replace(/\s+/g," ").trim();return n===h||h.startsWith(n)||n.startsWith(h);})||null;
+}
+function mkDate(y,m,d){if(m==null||m<0||m>11||d<1||d>31)return null;const x=new Date(y,m,d);return x.getMonth()===m?iso(x):null;}
+function findDates(s,year){
+  const re=/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?|\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:,?\s*(\d{4}))?/ig;
+  const out=[];let m;
+  while((m=re.exec(s))){
+    let y=year,mo,d;
+    if(m[1]){mo=+m[1]-1;d=+m[2];if(m[3])y=m[3].length===2?2000+ +m[3]:+m[3];}
+    else{mo=MONTH_IDX[m[4].toLowerCase().slice(0,3)];d=+m[5];if(m[6])y=+m[6];}
+    const v=mkDate(y,mo,d);if(v)out.push({v,idx:m.index,end:m.index+m[0].length});
+  }
+  return out;
+}
+function parseDates(text,month,year){
+  const t=String(text||"").trim();
+  const res={entries:[],warn:"",err:""};
+  if(!t||/^(none|n\/?a|no|-|—|0|x)$/i.test(t))return res;
+  if(/(medical|fmla|\bloa\b|leave|maternity|paternity|disability|workers)/i.test(t)){
+    const type=/fmla/i.test(t)?"FMLA":/matern|patern|parental/i.test(t)?"Maternity / Paternity leave":/workers/i.test(t)?"Workers' comp":"Medical leave";
+    const ds=findDates(t,year),r=t.search(/return|back/i);
+    const ret=ds.length?((r>=0&&ds.find(d=>d.idx>r))||ds[ds.length-1]).v:"";
+    const start=mkDate(year,month,1);
+    if(ret&&ret<=start){res.warn=`Already back on ${shortDate(ret)}, so nothing to add`;return res;}
+    res.entries.push({type,start,end:ret?addDays(ret,-1):OPEN_END,returnDate:ret,note:""});
+    if(ret&&ret<todayIso())res.warn=`Returned ${shortDate(ret)}`;
+    return res;
+  }
+  const parts=t.split(/,|;|&|\+|\band\b/i).map(x=>x.trim()).filter(Boolean);
+  for(const part of parts){
+    const nm=part.match(/\(([^)]*)\)/)||part.match(/\b((?:am|pm|half)\s*(?:day|only)?)\b/i);
+    let note=nm?nm[1].trim():"";if(note)note=note.replace(/^am\b/i,"AM").replace(/^pm\b/i,"PM");
+    note=note.charAt(0).toUpperCase()+note.slice(1);
+    const short=part.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\s*(?:-|–|—|to|thru|through)\s*(\d{1,2})(?!\s*\/)\b/i);
+    const ds=findDates(part,year);
+    if(short&&ds.length===1){
+      const a=ds[0].v,b=mkDate(+a.slice(0,4),+a.slice(5,7)-1,+short[4]);
+      if(b){res.entries.push(b<a?{type:"PTO",start:b,end:a,returnDate:"",note}:{type:"PTO",start:a,end:b,returnDate:"",note});continue;}
+    }
+    if(!ds.length){res.err=`Couldn't read "${part}"`;continue;}
+    const between=ds.length>=2?part.slice(ds[0].end,ds[1].idx):"";
+    if(ds.length===2&&/^\s*(?:-|–|—|to|thru|through)\s*$/i.test(between)){
+      let a=ds[0].v,b=ds[1].v;
+      if(b<a){res.warn=`"${part}" looks reversed. Will save as ${shortDate(b)} – ${shortDate(a)}, please check`;[a,b]=[b,a];}
+      res.entries.push({type:"PTO",start:a,end:b,returnDate:"",note});
+    } else ds.forEach(d=>res.entries.push({type:"PTO",start:d.v,end:d.v,returnDate:"",note}));
+  }
+  return res;
+}
+function parsePtoList(text){
+  const now=new Date();
+  const mh=text.match(/\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\b\.?\s*(\d{4})?\s*pto\b/i)
+        ||text.match(/\b(january|february|march|april|june|july|august|september|october|november|december)\b/i);
+  let month=mh?MONTH_IDX[mh[1].toLowerCase().slice(0,3)]:now.getMonth();
+  let year=mh&&mh[2]?+mh[2]:now.getFullYear();
+  if(!(mh&&mh[2])&&month<now.getMonth()-6)year++;
+  const rows=[];let storeLabel="",store=null;
+  text.replace(/\r/g,"").split("\n").forEach(raw=>{
+    const line=raw.replace(/ /g," ");
+    const cells=line.split("\t").map(c=>c.trim().replace(/^"+|"+$/g,"").trim());
+    const ne=cells.filter(Boolean);
+    if(!ne.length)return;
+    if(/^total\b/i.test(ne[0])||/^title$/i.test(ne[0])||/^salesperson$/i.test(ne[0]))return;
+    if(ne.length===1&&/^\d{1,3}\s+[a-z]/i.test(ne[0])){storeLabel=ne[0].replace(/^\d{1,3}\s+/,"").trim();store=findStore(storeLabel);return;}
+    if(!storeLabel)return;
+    let title="",name="",dates="";
+    if(line.includes("\t")){
+      let i=cells.findIndex(Boolean);
+      if(/^[A-Z]{2,4}$/.test(cells[i])&&cells.slice(i+1).some(Boolean)){title=cells[i];i++;while(i<cells.length&&!cells[i])i++;}
+      name=cells[i]||"";dates=cells.slice(i+1).filter(Boolean).join(", ");
+    } else {
+      const m=ne.join(" ").match(/^([A-Z]{2,4})\s+(.+)$/);if(!m)return;
+      title=m[1];const rest=m[2];
+      const dm=rest.match(/\s(?=\d{1,2}\/\d|none\b|medical|fmla|leave|\bloa\b|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d)/i);
+      if(dm){name=rest.slice(0,dm.index).trim();dates=rest.slice(dm.index).trim();}else name=rest.trim();
+    }
+    if(name)rows.push({storeLabel,store,title,name,dates});
+  });
+  return {rows,month,year};
+}
+function overlaps(a1,a2,b1,b2){return a1<=b2&&b1<=a2;}
+let IMP=null;
+function buildImport(text){
+  const {rows,month,year}=parsePtoList(text);
+  const all=S.stores.flatMap(st=>st.employees.map(emp=>({st,emp})));
+  const out=[];let none=0;
+  rows.forEach(r=>{
+    const p=parseDates(r.dates,month,year);
+    if(!p.entries.length&&!p.err&&!p.warn){none++;return;}
+    const cands=r.store?r.store.employees.map(emp=>({st:r.store,emp})):all;
+    const m=bestMatch(r.name,cands);
+    out.push({...r,...p,match:m?m.st.id+"|"+m.emp.id:(r.store?"new:"+r.store.id:"skip")});
+  });
+  IMP={rows:out,none,month,year,total:rows.length};
+  out.forEach(markDups);
+}
+function markDups(r){
+  const [sid,eid]=r.match.includes("|")?r.match.split("|"):[null,null];
+  r.entries.forEach(e=>{
+    e.dup=!!sid&&S.pto.some(p=>p.storeId===sid&&p.empId===eid&&isLeave(p)===isLeave(e)&&overlaps(p.start,p.end,e.start,e.end));
+    if(e.on===undefined||e._dupWas!==e.dup)e.on=!e.dup;
+    e._dupWas=e.dup;
+  });
+}
+function entryLabel(e){
+  if(isLeave(e))return `${esc(e.type)} · since ${shortDate(e.start)} · ${e.returnDate?"back "+shortDate(e.returnDate):"return TBD"}`;
+  const n=ptoDays(e);
+  return `${ptoRange(e)}${n>1?` <span class="imp-n">${n} days</span>`:""}${e.note?` <span class="imp-n">${esc(e.note)}</span>`:""}`;
+}
+function impOptions(r){
+  const opt=(v,l,sel)=>`<option value="${esc(v)}" ${sel?"selected":""}>${esc(l)}</option>`;
+  let h="";
+  const list=r.store?[r.store]:S.stores;
+  list.forEach(st=>{h+=`<optgroup label="${esc(st.name)}">${st.employees.map(e=>opt(st.id+"|"+e.id,cleanName(e.name),r.match===st.id+"|"+e.id)).join("")}</optgroup>`;});
+  if(r.store)h+=opt("new:"+r.store.id,`+ Add "${r.name}" to ${r.store.name}`,r.match==="new:"+r.store.id);
+  h+=opt("skip","Skip this person",r.match==="skip");
+  return h;
+}
+function impCount(){return IMP.rows.reduce((n,r)=>n+(r.match==="skip"?0:r.entries.filter(e=>e.on).length),0);}
+function renderImport(){
+  const sh=document.getElementById("sheet");
+  if(!IMP){
+    sh.innerHTML=`<div class="sheet-h"><h3>Paste PTO list</h3><button class="iconbtn" data-close aria-label="Close">✕</button></div>
+    <div class="form"><div style="font-size:13px;color:var(--muted)">Copy the whole monthly PTO sheet, store headings and all, and paste it here. You'll see a preview before anything is saved.</div>
+    <textarea id="impText" rows="11" placeholder="November PTO&#10;01 Richmond&#10;Title	Salesperson	Dates&#10;SDC	Brian Martin	11/27-11/28" style="font-family:inherit;font-size:13px;resize:vertical"></textarea>
+    <button class="btn" id="impRead">Read list</button></div>`;
+    setTimeout(()=>{const t=sh.querySelector("#impText");t&&t.focus();},50);
+    return;
+  }
+  const groups=[];IMP.rows.forEach((r,i)=>{let g=groups.find(x=>x.label===r.storeLabel);if(!g)groups.push(g={label:r.storeLabel,store:r.store,rows:[]});g.rows.push({r,i});});
+  const n=impCount();
+  sh.innerHTML=`<div class="sheet-h"><h3>${MONTHS[IMP.month]} PTO · check before saving</h3><button class="iconbtn" data-close aria-label="Close">✕</button></div>
+  <div class="imp-sum">${IMP.rows.length} people with time off · ${IMP.none} with none${IMP.rows.some(r=>r.err||r.warn)?' · <b style="color:var(--amber)">some need a look</b>':""}</div>
+  <div class="imp-list">${groups.map(g=>`<div class="imp-store" style="--sc:${g.store?storeColor(g.store):"#888"}">${esc(g.store?g.store.name:g.label)}${g.store?"":' <span class="imp-n">store not found</span>'}</div>
+    ${g.rows.map(({r,i})=>`<div class="imp-row ${r.match==="skip"?"skipped":""}">
+      <div class="imp-top"><div class="imp-name">${esc(r.name)}${r.title?` <span class="imp-n">${esc(r.title)}</span>`:""}<div class="imp-raw">"${esc(r.dates)}"</div></div>
+        <select data-imp-match="${i}">${impOptions(r)}</select></div>
+      ${r.entries.map((e,j)=>`<label class="imp-e ${e.dup?"dup":""}"><input type="checkbox" data-imp-e="${i}:${j}" ${e.on?"checked":""} ${r.match==="skip"?"disabled":""}><span>${entryLabel(e)}</span>${e.dup?'<span class="imp-tag">Already entered</span>':""}</label>`).join("")}
+      ${r.warn?`<div class="imp-warn">⚠ ${esc(r.warn)}</div>`:""}${r.err?`<div class="imp-err">✕ ${esc(r.err)}. Add it by hand on the PTO tab.</div>`:""}
+    </div>`).join("")}`).join("")}</div>
+  <div class="actions imp-foot"><button class="btn ghost" id="impBack">Back</button><button class="btn" id="impSave" ${n?"":"disabled"}>Save ${n} ${n===1?"entry":"entries"}</button></div>`;
+}
+function openImport(){IMP=null;openSheet("",true);renderImport();
+  const sh=document.getElementById("sheet");
+  sh.onclick=async e=>{
+    const t=e.target;
+    if(t.closest("[data-close]")){closeSheet();return;}
+    if(t.id==="impRead"){const txt=sh.querySelector("#impText").value;if(!txt.trim())return toast("Paste the PTO list first");buildImport(txt);if(!IMP.rows.length&&!IMP.none){IMP=null;toast("Couldn't find any stores or names in that text");return;}IMP.text=txt;renderImport();sh.scrollTop=0;return;}
+    if(t.id==="impBack"){const txt=IMP&&IMP.text;IMP=null;renderImport();if(txt)sh.querySelector("#impText").value=txt;return;}
+    if(t.id==="impSave"){t.disabled=true;await saveImport();return;}
+  };
+  sh.onchange=e=>{
+    const t=e.target;
+    if(t.dataset.impMatch!=null){const r=IMP.rows[+t.dataset.impMatch];r.match=t.value;markDups(r);renderImport();return;}
+    if(t.dataset.impE){const [i,j]=t.dataset.impE.split(":").map(Number);IMP.rows[i].entries[j].on=t.checked;const b=sh.querySelector("#impSave");const n=impCount();b.textContent=`Save ${n} ${n===1?"entry":"entries"}`;b.disabled=!n;}
+  };
+}
+async function saveImport(){
+  const chosen=[],newEmps={};
+  IMP.rows.forEach(r=>{
+    const es=r.entries.filter(e=>e.on);if(!es.length||r.match==="skip")return;
+    let sid,eid,name;
+    if(r.match.startsWith("new:")){
+      sid=r.match.slice(4);const st=storeById(sid);if(!st)return;
+      const list=newEmps[sid]=newEmps[sid]||[];
+      let id=slug(r.name),k=2;while(st.employees.some(e=>e.id===id)||list.some(e=>e.id===id))id=slug(r.name)+"-"+k++;
+      list.push({id,name:r.name,days:Array(7).fill("OFF")});eid=id;name=r.name;
+    } else {
+      [sid,eid]=r.match.split("|");const st=storeById(sid);const em=st&&st.employees.find(e=>e.id===eid);name=em?em.name:r.name;
+    }
+    es.forEach(e=>chosen.push({id:uid(),storeId:sid,empId:eid,name,type:e.type,start:e.start,end:e.end,returnDate:e.returnDate||"",note:e.note||""}));
+  });
+  if(!chosen.length){toast("Nothing selected to save");return;}
+  for(const sid in newEmps){const st=storeById(sid);if(!(await saveStore({id:st.id,name:st.name,employees:st.employees.concat(newEmps[sid])}))){renderImport();return;}}
+  if(await write("importPto",chosen)){closeSheet();IMP=null;toast(`Saved ${chosen.length} PTO ${chosen.length===1?"entry":"entries"}`);}
+  else renderImport();
+}
+
 /* ---------- render + events ---------- */
 function render(){
   document.querySelectorAll("nav.tabs button").forEach(b=>b.classList.toggle("on",b.dataset.v===S.view));
@@ -731,6 +952,7 @@ view.addEventListener("click",e=>{
   if(t.closest("[data-go-today]")){S.date=todayIso();render();return;}
   if(b=t.closest("[data-day]")){S.date=b.dataset.day;S.view="today";render();window.scrollTo(0,0);return;}
   if(b=t.closest("[data-cell]")){const [s,em,d]=b.dataset.cell.split("|");openCell(s,em,d);return;}
+  if(t.id==="impOpen"){openImport();return;}
   if(!t.closest("[data-delpto]")&&(b=t.closest("[data-editpto]"))){openPtoEdit(S.pto.find(x=>x.id===b.dataset.editpto));return;}
   if(b=t.closest("[data-delpto]")){const p=S.pto.find(x=>x.id===b.dataset.delpto);if(!p)return;confirmSheet("Remove PTO?",`${esc(p.name)} · ${ptoRange(p)}`,"Remove",async()=>{if(await delPto(p.id))toast("PTO removed");});return;}
   if(b=t.closest("[data-edstore]")){const target=b.dataset.edstore;syncDraft();flushSave().then(()=>{draft=null;S.editStore=target;render();});return;}
