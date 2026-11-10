@@ -49,6 +49,9 @@ header.top .sub{font-size:10px;letter-spacing:.08em;text-transform:uppercase;col
 .sdot{width:8px;height:8px;border-radius:50%;flex:none;background:transparent;box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.18)}
 .sdot.now{background:var(--green);box-shadow:0 0 0 3px rgba(22,163,74,.15)}
 .sdot.done{background:rgba(0,0,0,.15);box-shadow:none}
+.dshort{display:none}@media (max-width:440px){.dlong{display:none}.dshort{display:inline}}
+.mgr{display:inline-block;margin-left:6px;font-size:9px;font-weight:700;letter-spacing:.08em;background:#1a1a1a;color:#fff;border-radius:5px;padding:2px 5px;vertical-align:1px;flex:none}
+.savenote{text-align:center;font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;color:var(--muted);margin:4px 0 14px}
 .chgmark{width:6px;height:6px;border-radius:50%;background:var(--brand);margin-left:5px;flex:none}
 .storegrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-items:stretch}
 @media (min-width:1000px){.storegrid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}}
@@ -60,7 +63,8 @@ header.top .sub{font-size:10px;letter-spacing:.08em;text-transform:uppercase;col
 .storegrid .card .row:first-of-type{border-top:0}
 @media (max-width:520px){.storegrid .card-h h3{font-size:16px;letter-spacing:.05em}.storegrid .card-h{padding:9px 10px}.storegrid .row.slim{padding:7px 10px}}
 .storegrid .row.slim{padding:7px 12px;gap:7px}
-.storegrid .row .name{font-size:13px}
+.storegrid .row .name{font-size:13px;white-space:normal;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.storegrid .row.slim .who{align-items:center}
 .storegrid .row .time{font-size:12px;font-weight:600}
 .storegrid .sdot{width:7px;height:7px}
 .storegrid .empty{padding:8px 12px 12px;font-size:12px}
@@ -215,6 +219,15 @@ const DAYS_LONG=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","
 const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
 const COLORS=["#2d5016","#5c3d11","#1a3a5c","#5c1a2d","#3d2d5c","#1a4a3d","#5c2d1a","#4a1a3d","#5c4a1a","#1a2d5c","#3d5c1a","#2d4a1a"];
 const PTO_TYPES=["Vacation","Sick","Personal","Bereavement","Jury duty","Unpaid","Other"];
+const LEAVE_TYPES=["Medical leave","FMLA","Maternity / Paternity leave","Workers' comp"];
+const OPEN_END="9999-12-31";
+const isLeave=p=>!!p&&(LEAVE_TYPES.includes(p.type)||p.end===OPEN_END||!!p.returnDate);
+const shortType=t=>t==="Medical leave"?"Med leave":t==="Maternity / Paternity leave"?"Parental leave":(t||"PTO");
+function mgrRank(n){n=String(n||"");return /\(\s*SM\s*\)/i.test(n)?0:/\(\s*(ASM|AM)\s*\)/i.test(n)?1:2;}
+function mgrTag(n){const r=mgrRank(n);return r===0?"SM":r===1?(/\(\s*AM\s*\)/i.test(n)?"AM":"ASM"):"";}
+function cleanName(n){return String(n||"").replace(/\s*\(\s*(SM|ASM|AM)\s*\)/ig,"").trim();}
+function nameHtml(n){const t=mgrTag(n);return `<span class="name">${esc(cleanName(n))}</span>${t?`<span class="mgr">${t}</span>`:""}`;}
+function shortDate(d){const x=fromIso(d);return MONTHS[x.getMonth()].slice(0,3)+" "+x.getDate();}
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const pad=n=>String(n).padStart(2,"0");
 const iso=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
@@ -416,7 +429,11 @@ function viewToday(){
     store.employees.forEach(emp=>{
       if(!matchQ(emp.name))return;
       const c=effective(store,emp,d);
-      if(c.pto){out++;outList.push({store,emp,c,why:c.pto.type||"PTO",cls:"pto"});return;}
+      if(c.pto){
+        if(isLeave(c.pto)){out++;outList.push({store,emp,c,why:shortType(c.pto.type),cls:"leave"});return;}
+        if(c.kind==="work"){out++;outList.push({store,emp,c,why:c.pto.type||"PTO",cls:"pto"});}
+        return;
+      }
       if(c.kind==="leave"){out++;outList.push({store,emp,c,why:c.label,cls:"leave"});return;}
       if(c.kind!=="work")return;
       working++;
@@ -427,25 +444,25 @@ function viewToday(){
       }
       rows.push({emp,c,state});
     });
-    rows.sort((a,b)=>(a.c.start??9999)-(b.c.start??9999)||a.emp.name.localeCompare(b.emp.name));
+    rows.sort((a,b)=>mgrRank(a.emp.name)-mgrRank(b.emp.name)||(a.c.start??9999)-(b.c.start??9999)||a.emp.name.localeCompare(b.emp.name));
     if(S.q&&!rows.length)return "";
     const body=rows.length?rows.map(r=>{
       const c=r.c;
       const time=c.start!=null?`${fmt(c.start)}–${fmt(c.end)}`:esc(c.label);
       return `<div class="row slim ${r.state==="done"?"done":""}" data-cell="${esc(store.id)}|${esc(r.emp.id)}|${d}">
         <span class="sdot ${r.state}" title="${r.state==="now"?"On now":r.state==="done"?"Shift over":""}"></span>
-        <div class="who"><span class="name">${esc(r.emp.name)}</span>${c.changed?' <span class="chgmark" title="Changed for this day"></span>':""}</div>
+        <div class="who">${nameHtml(r.emp.name)}${c.changed?' <span class="chgmark" title="Changed for this day"></span>':""}</div>
         <div class="time">${time}</div></div>`;
     }).join(""):`<div class="empty">${store.employees.length?"No one scheduled":"No employees set up yet"}</div>`;
     return `<div class="card" style="--sc:${storeColor(store,i)}"><div class="card-h"><span class="dot"></span><h3>${esc(store.name)}</h3><span class="count">${rows.length}</span></div>${body}</div>`;
   }).join("");
-  const outHtml=outList.length?`<div class="outstrip"><span class="lbl">Out ${isToday?"today":""}</span>${outList.map(o=>`<button class="outchip ${o.cls}" data-cell="${esc(o.store.id)}|${esc(o.emp.id)}|${d}"><b>${esc(o.emp.name)}</b> ${esc(o.cls==="pto"?o.why:String(o.why).toUpperCase())}</button>`).join("")}</div>`:"";
+  const outHtml=outList.length?`<div class="outstrip"><span class="lbl">Out ${isToday?"today":""}</span>${outList.map(o=>`<button class="outchip ${o.cls}" data-cell="${esc(o.store.id)}|${esc(o.emp.id)}|${d}"><b>${esc(cleanName(o.emp.name))}</b> ${esc(o.why)}${o.c.pto&&isLeave(o.c.pto)?` · ${o.c.pto.returnDate?"back "+shortDate(o.c.pto.returnDate):"return TBD"}`:""}</button>`).join("")}</div>`:"";
   const showSearch=S.showSearch||!!S.q;
   const summary=`${working} working${isToday?` · <span style="color:var(--green)">${onNow} on now</span>`:""} · ${out} out`;
   return `
   <div class="datebar glass">${brand()}<div class="navrow">
     <button class="iconbtn" data-nav="-1" aria-label="Previous day">‹</button>
-    <div class="title"><div class="big">${dateLabel(d)}</div><div class="small">${isToday?"Today":relLabel(d)}</div></div>
+    <div class="title"><div class="big"><span class="dlong">${DAYS_LONG[dow(d)]}</span><span class="dshort">${DAYS[dow(d)]}</span>, ${shortDate(d)}</div><div class="small">${isToday?"Today":relLabel(d)}</div></div>
     ${isToday?"":`<button class="pill" data-go-today>Today</button>`}
     <button class="iconbtn" data-search aria-label="Search">${SEARCH_ICON}</button>
     <button class="iconbtn" data-nav="1" aria-label="Next day">›</button>
@@ -460,7 +477,8 @@ function weekCellHtml(store,emp,date){
   const c=effective(store,emp,date);
   const isT=date===todayIso();
   let cls="",txt="";
-  if(c.pto){cls="pto";txt=`PTO<small>${esc(c.pto.type||"")}</small>`;}
+  if(c.pto&&isLeave(c.pto)){cls="leave";txt=`${esc(shortType(c.pto.type))}<small>${c.pto.returnDate?"back "+shortDate(c.pto.returnDate):"return TBD"}</small>`;}
+  else if(c.pto){cls="pto";txt=`PTO<small>${esc(c.pto.type||"")}</small>`;}
   else if(c.kind==="leave"){cls="leave";txt=esc(c.label);}
   else if(c.kind==="off"){cls="off";txt=esc(c.label||"Off");}
   else if(c.start!=null){txt=`${fmt(c.start)}–${fmt(c.end)}<small>${hrsTxt(durH(c))}</small>`;}
@@ -474,13 +492,13 @@ function viewWeek(){
   const dates=[...Array(7)].map((_,i)=>addDays(ws,i));
   const cards=visibleStores().map(store=>{
     const i=S.stores.indexOf(store);
-    const emps=store.employees.filter(e=>matchQ(e.name));
+    const emps=store.employees.filter(e=>matchQ(e.name)).map((e,i)=>({e,i})).sort((a,b)=>mgrRank(a.e.name)-mgrRank(b.e.name)||a.i-b.i).map(x=>x.e);
     if(S.q&&!emps.length)return "";
     const head=`<tr><th class="nm">Employee</th>${dates.map((d,k)=>`<th class="${d===t?"today":""}">${DAYS[k]}<span class="d">${fromIso(d).getDate()}</span></th>`).join("")}<th>Hrs</th></tr>`;
     const rows=emps.map(emp=>{
       let tot=0;
       const cells=dates.map(d=>{const c=effective(store,emp,d);if(!c.pto&&c.kind==="work"&&c.start!=null)tot+=durH(c);return `<td>${weekCellHtml(store,emp,d)}</td>`;}).join("");
-      return `<tr><td class="nm">${esc(emp.name)}</td>${cells}<td class="tot">${hrsTxt(tot)}</td></tr>`;
+      return `<tr><td class="nm">${nameHtml(emp.name)}</td>${cells}<td class="tot">${hrsTxt(tot)}</td></tr>`;
     }).join("");
     const counts=dates.map(d=>emps.filter(e=>{const c=effective(store,e,d);return !c.pto&&c.kind==="work";}).length);
     const foot=emps.length?`<tr class="daytot"><td class="nm" style="font-weight:600;color:var(--muted)">Staff</td>${counts.map(n=>`<td>${n}</td>`).join("")}<td></td></tr>`:"";
@@ -539,6 +557,7 @@ function empOptions(selStore,selEmp){
 }
 function ptoDays(p){return Math.round((fromIso(p.end)-fromIso(p.start))/864e5)+1;}
 function ptoRange(p){
+  if(isLeave(p))return "Since "+shortDate(p.start)+" · "+(p.returnDate?"back "+shortDate(p.returnDate):"return TBD");
   const a=fromIso(p.start),b=fromIso(p.end);
   const A=MONTHS[a.getMonth()].slice(0,3)+" "+a.getDate();
   if(p.start===p.end)return DAYS[dow(p.start)]+", "+A;
@@ -550,17 +569,18 @@ function viewPto(){
   const list=S.pto.filter(p=>(S.store==="all"||p.storeId===S.store)&&matchQ(p.name||""));
   const cur=list.filter(p=>p.end>=t).sort((a,b)=>a.start.localeCompare(b.start));
   const past=list.filter(p=>p.end<t).sort((a,b)=>b.start.localeCompare(a.start)).slice(0,30);
-  const row=p=>{const st=storeById(p.storeId);const now=p.start<=t&&p.end>=t;return `<div class="row">
-    ${av(p.name,st?storeColor(st):"#888")}<div class="who"><div class="name">${esc(p.name)} ${now?'<span class="tag pto">OUT NOW</span>':""}</div><div class="meta">${esc(st?st.name:"")} · ${esc(p.type||"PTO")}${p.note?" · "+esc(p.note):""}</div></div>
-    <div><div class="time">${ptoRange(p)}</div><div class="hrs">${ptoDays(p)} day${ptoDays(p)>1?"s":""}</div></div>
+  const row=p=>{const st=storeById(p.storeId);const now=p.start<=t&&p.end>=t;const lv=isLeave(p);const emp=st&&st.employees.find(e=>e.id===p.empId);const nm=emp?emp.name:p.name;return `<div class="row" data-editpto="${esc(p.id)}" style="cursor:pointer">
+    ${av(cleanName(nm),st?storeColor(st):"#888")}<div class="who"><div class="name">${esc(cleanName(nm))} ${now?`<span class="tag ${lv?"leave":"pto"}">OUT NOW</span>`:""}</div><div class="meta">${esc(st?st.name:"")} · ${esc(p.type||"PTO")}${p.note?" · "+esc(p.note):""}</div></div>
+    <div><div class="time">${lv?(p.returnDate?"Back "+shortDate(p.returnDate):"Return TBD"):ptoRange(p)}</div><div class="hrs">${lv?"Since "+shortDate(p.start):ptoDays(p)+" day"+(ptoDays(p)>1?"s":"")}</div></div>
     ${S.readOnly?"":`<button class="iconbtn" data-delpto="${esc(p.id)}" aria-label="Remove PTO" style="width:32px;height:32px;font-size:14px">✕</button>`}</div>`;};
   const noEmps=!S.stores.some(s=>s.employees.length);
   return `${brandCard()}
   ${S.readOnly?"":`<div class="card"><div class="card-h"><h3>Add PTO</h3></div>
   <form class="form" id="ptoForm">
     <label>Employee<select name="emp" required>${noEmps?'<option value="">Add employees first</option>':'<option value="">Choose…</option>'+empOptions()}</select></label>
-    <div class="two"><label>First day off<input type="date" name="start" required value="${t}"></label><label>Last day off<input type="date" name="end" required value="${t}"></label></div>
-    <div class="two"><label>Type<select name="type">${PTO_TYPES.map(x=>`<option>${x}</option>`).join("")}</select></label><label>Note<input name="note" placeholder="Optional"></label></div>
+    <label>Type<select name="type"><optgroup label="Time off">${PTO_TYPES.map(x=>`<option>${x}</option>`).join("")}</optgroup><optgroup label="Leave">${LEAVE_TYPES.map(x=>`<option>${esc(x)}</option>`).join("")}</optgroup></select></label>
+    <div class="two"><label>First day off<input type="date" name="start" required value="${t}"></label><label><span id="endLbl">Last day off</span><input type="date" name="end" required value="${t}"></label></div>
+    <label>Note<input name="note" placeholder="Optional"></label>
     <button class="btn" type="submit">Save PTO</button>
   </form></div>`}
   ${storeChips()}
@@ -587,10 +607,7 @@ function viewEdit(){
     <div class="gridwrap"><table class="ed"><tr><th>Name</th>${DAYS_LONG.map(d=>`<th>${d}</th>`).join("")}<th></th></tr>${rows}</table></div>
     <div style="padding:10px 18px 16px"><button class="btn ghost sm" id="addEmp">+ Add employee</button></div>
   </div>
-  <div class="card" style="display:flex;gap:8px;padding:12px">
-    <button class="btn ghost" id="revert" style="flex:1">Discard</button>
-    <button class="btn" id="saveStore" style="flex:2" ${S.readOnly?"disabled":""}>Save regular week</button>
-  </div>`;
+  <div class="savenote" id="saveNote">${saveState==="saving"?"Saving…":saveState==="error"?"Not saved. Check your connection and try again.":"Changes save automatically"}</div>`;
 }
 
 /* ---------- cell editor ---------- */
@@ -605,7 +622,7 @@ function openCell(storeId,empId,date){
   <div class="form">
     <div style="font-size:13px;color:var(--muted)">${esc(store.name)} · ${dateLabel(date)}</div>
     <div style="font-size:13px">Regular ${DAYS_LONG[dow(date)]}: <b>${esc(regular)}</b>${c.changed?` · Changed to <b>${esc(c.raw)}</b>`:""}</div>
-    ${c.pto?`<div class="banner" style="margin:0"><b>On PTO</b> (${esc(c.pto.type||"PTO")}) ${ptoRange(c.pto)}${c.pto.note?": "+esc(c.pto.note):""}</div>`:""}
+    ${c.pto?`<div class="banner" style="margin:0"><b>${isLeave(c.pto)?"On leave":"On PTO"}</b> (${esc(c.pto.type||"PTO")}) ${ptoRange(c.pto)}${c.pto.note?": "+esc(c.pto.note):""}</div>`:""}
     ${ro?"":`<label>Hours for this day only<input id="ovVal" value="${esc(c.changed?c.raw:regular)}"></label>
     <div class="quick">${quick.map(q=>`<button data-q="${esc(q)}">${esc(q)}</button>`).join("")}</div>`}
   </div>
@@ -613,7 +630,7 @@ function openCell(storeId,empId,date){
     ${c.changed?`<button class="btn ghost" id="ovReset">Back to regular</button>`:""}
     <button class="btn" id="ovSave">Save for ${DAYS[dow(date)]} ${fromIso(date).getDate()}</button>
   </div>
-  <div class="actions">${c.pto?`<button class="btn danger" id="ptoRm">Remove this PTO</button>`:`<button class="btn ghost" id="ptoAdd">Mark PTO for this day</button>`}</div>`}`);
+  <div class="actions">${c.pto?`<button class="btn ghost" id="ptoEd">${isLeave(c.pto)?"Edit return date":"Edit dates"}</button><button class="btn danger" id="ptoRm">Remove</button>`:`<button class="btn ghost" id="ptoAdd">Mark PTO or leave</button>`}</div>`}`);
   const sh=document.getElementById("sheet");
   sh.querySelector("[data-close]").onclick=closeSheet;
   sh.querySelectorAll("[data-q]").forEach(b=>b.onclick=()=>{sh.querySelector("#ovVal").value=b.dataset.q;});
@@ -628,10 +645,49 @@ function openCell(storeId,empId,date){
   if(reset)reset.onclick=async()=>{closeSheet();if(await setOverride(storeId,empId,date,null))toast("Back to regular");};
   const pa=sh.querySelector("#ptoAdd");
   if(pa)pa.onclick=()=>{S.view="pto";closeSheet();render();setTimeout(()=>{const f=document.getElementById("ptoForm");if(f){f.emp.value=storeId+"|"+empId;f.start.value=date;f.end.value=date;f.scrollIntoView({behavior:"smooth"});}},30);};
+  const pe=sh.querySelector("#ptoEd");
+  if(pe)pe.onclick=()=>openPtoEdit(c.pto);
   const pr=sh.querySelector("#ptoRm");
   if(pr)pr.onclick=async()=>{closeSheet();if(await delPto(c.pto.id))toast("PTO removed");};
 }
 
+function openPtoEdit(p){
+  if(!p)return;
+  const lv=isLeave(p);
+  const st=storeById(p.storeId);const emp=st&&st.employees.find(e=>e.id===p.empId);
+  openSheet(`<div class="sheet-h"><h3>${esc(cleanName(emp?emp.name:p.name))}</h3><button class="iconbtn" data-close aria-label="Close">✕</button></div>
+  <form class="form" id="ptoEdit">
+    <div style="font-size:13px;color:var(--muted)">${esc(st?st.name:"")}</div>
+    <label>Type<select name="type"><optgroup label="Time off">${PTO_TYPES.map(x=>`<option ${x===p.type?"selected":""}>${x}</option>`).join("")}</optgroup><optgroup label="Leave">${LEAVE_TYPES.map(x=>`<option ${x===p.type?"selected":""}>${esc(x)}</option>`).join("")}</optgroup></select></label>
+    <div class="two"><label>First day off<input type="date" name="start" required value="${esc(p.start)}"></label>
+    <label><span id="endLbl2">${lv?"Return date (optional)":"Last day off"}</span><input type="date" name="end" ${lv?"":"required"} value="${esc(lv?(p.returnDate||""):p.end)}"></label></div>
+    <label>Note<input name="note" value="${esc(p.note||"")}" placeholder="Optional"></label>
+    <button class="btn" type="submit">Save</button>
+  </form>
+  <div class="actions"><button class="btn danger" id="ptoDel2">Remove</button></div>`);
+  const sh=document.getElementById("sheet");const f=sh.querySelector("#ptoEdit");
+  sh.querySelector("[data-close]").onclick=closeSheet;
+  f.type.onchange=()=>{const l=LEAVE_TYPES.includes(f.type.value);sh.querySelector("#endLbl2").textContent=l?"Return date (optional)":"Last day off";f.end.required=!l;if(!l&&!f.end.value)f.end.value=f.start.value;};
+  f.onsubmit=async e=>{
+    e.preventDefault();
+    const r=ptoFromForm(f);if(!r)return;
+    closeSheet();
+    if(await write("updatePto",{...p,...r}))toast("Saved");
+  };
+  sh.querySelector("#ptoDel2").onclick=async()=>{closeSheet();if(await delPto(p.id))toast("Removed");};
+}
+function ptoFromForm(f){
+  const type=f.type.value,start=f.start.value;
+  if(!start){toast("Pick the first day");return null;}
+  if(LEAVE_TYPES.includes(type)){
+    const ret=f.end.value||"";
+    if(ret&&ret<=start){toast("Return date must be after the first day");return null;}
+    return {type,start,end:ret?addDays(ret,-1):OPEN_END,returnDate:ret,note:f.note.value.trim()};
+  }
+  let end=f.end.value||start;let s2=start;
+  if(end<s2)[s2,end]=[end,s2];
+  return {type,start:s2,end,returnDate:"",note:f.note.value.trim()};
+}
 function confirmSheet(title,msg,okLabel,fn){
   openSheet(`<div class="sheet-h"><h3>${esc(title)}</h3></div><div class="form"><div>${msg}</div></div><div class="actions"><button class="btn ghost" data-close>Cancel</button><button class="btn" id="okBtn">${esc(okLabel)}</button></div>`);
   const sh=document.getElementById("sheet");
@@ -656,6 +712,7 @@ function render(){
 
 document.querySelector("nav.tabs").addEventListener("click",e=>{
   const b=e.target.closest("button[data-v]");if(!b)return;
+  if(S.view==="edit"){syncDraft();flushSave();}
   S.view=b.dataset.v;draft=null;
   try{localStorage.setItem("sched.view",S.view);}catch(x){}
   try{history.replaceState(null,"","#"+S.view);}catch(x){}
@@ -674,13 +731,13 @@ view.addEventListener("click",e=>{
   if(t.closest("[data-go-today]")){S.date=todayIso();render();return;}
   if(b=t.closest("[data-day]")){S.date=b.dataset.day;S.view="today";render();window.scrollTo(0,0);return;}
   if(b=t.closest("[data-cell]")){const [s,em,d]=b.dataset.cell.split("|");openCell(s,em,d);return;}
+  if(!t.closest("[data-delpto]")&&(b=t.closest("[data-editpto]"))){openPtoEdit(S.pto.find(x=>x.id===b.dataset.editpto));return;}
   if(b=t.closest("[data-delpto]")){const p=S.pto.find(x=>x.id===b.dataset.delpto);if(!p)return;confirmSheet("Remove PTO?",`${esc(p.name)} · ${ptoRange(p)}`,"Remove",async()=>{if(await delPto(p.id))toast("PTO removed");});return;}
-  if(b=t.closest("[data-edstore]")){syncDraft();if(draftDirty()){const target=b.dataset.edstore;confirmSheet("Discard changes?","You have unsaved edits to this store.","Discard",()=>{draft=null;S.editStore=target;render();});return;}draft=null;S.editStore=b.dataset.edstore;render();return;}
-  if(b=t.closest("[data-rm]")){syncDraft();const i=+b.dataset.rm;const nm=draft.employees[i].name||"this employee";confirmSheet("Remove employee?",`Remove ${esc(nm)} from the regular schedule? Click Save after to keep it.`,"Remove",()=>{draft.employees.splice(i,1);forceRender();});return;}
-  if(t.id==="addEmp"){syncDraft();draft.employees.push({id:uid(),name:"",role:"",days:Array(7).fill("OFF")});forceRender();setTimeout(()=>{const ins=view.querySelectorAll("input.nm");ins[ins.length-1]&&ins[ins.length-1].focus();},20);return;}
-  if(t.id==="addStore"){let nm="New store",k=2;while(storeById(slug(nm)))nm="New store "+(k++);const st={id:slug(nm),name:nm,employees:[]};saveStore(st).then(ok=>{if(!ok)return;draft=null;S.editStore=slug(nm);render();toast("Store added. Rename it and add people.");});return;}
-  if(t.id==="revert"){draft=null;forceRender();toast("Changes discarded");return;}
-  if(t.id==="saveStore"){syncDraft();const st=storeById(S.editStore);const out={...st,name:draft.name.trim()||st.name,employees:draft.employees.filter(e=>e.name.trim()).map(e=>({...e,name:e.name.trim(),days:e.days.map(x=>x.trim())}))};saveStore(out).then(ok=>{if(!ok)return;draft=null;S.editStore=slug(out.name);render();toast("Saved "+out.name);});return;}
+  if(b=t.closest("[data-edstore]")){const target=b.dataset.edstore;syncDraft();flushSave().then(()=>{draft=null;S.editStore=target;render();});return;}
+  if(b=t.closest("[data-rm]")){syncDraft();const i=+b.dataset.rm;const nm=draft.employees[i].name||"this employee";confirmSheet("Remove employee?",`Remove ${esc(nm)} from the regular schedule?`,"Remove",()=>{draft.employees.splice(i,1);forceRender();flushSave();});return;}
+  if(t.id==="addEmp"){syncDraft();draft.employees.push({id:uid(),name:"",days:Array(7).fill("OFF")});forceRender();setTimeout(()=>{const ins=view.querySelectorAll("input.nm");ins[ins.length-1]&&ins[ins.length-1].focus();},20);return;}
+  if(t.id==="addStore"){let nm="New store",k=2;while(storeById(slug(nm)))nm="New store "+(k++);const st={id:slug(nm),name:nm,employees:[]};saveStore(st).then(ok=>{if(!ok)return;draft=null;S.editStore=st.id;render();toast("Store added. Rename it and add people.");});return;}
+
 });
 function forceRender(){const a=document.activeElement;if(a&&a.blur)a.blur();render();}
 function syncDraft(){
@@ -692,9 +749,47 @@ function syncDraft(){
   });
 }
 function draftDirty(){const st=storeById(S.editStore);if(!draft||!st)return false;return JSON.stringify({n:draft.name,e:draft.employees})!==JSON.stringify({n:st.name,e:st.employees});}
+view.addEventListener("change",e=>{
+  const f=e.target.form;
+  if(f&&f.id==="ptoForm"&&e.target.name==="type"){
+    const l=LEAVE_TYPES.includes(f.type.value);
+    document.getElementById("endLbl").textContent=l?"Return date (optional)":"Last day off";
+    f.end.required=!l;f.end.value=l?"":f.start.value;
+  }
+});
 view.addEventListener("input",e=>{
   if(e.target.id==="q"){S.q=e.target.value;render();}
 });
+let saveTimer=null,saveState="";
+function draftOut(){
+  const st=storeById(S.editStore);if(!st||!draft)return null;
+  return {id:st.id,name:(draft.name||"").trim()||st.name,employees:draft.employees.filter(e=>(e.name||"").trim()).map(e=>({id:e.id,name:e.name.trim(),days:e.days.map(x=>String(x||"").trim())}))};
+}
+function sameAsSaved(out){
+  const st=storeById(out.id);if(!st)return false;
+  return JSON.stringify({n:out.name,e:out.employees.map(e=>[e.id,e.name,e.days])})===JSON.stringify({n:st.name,e:st.employees.map(e=>[e.id,e.name,e.days])});
+}
+function setSaveNote(state){saveState=state;const n=document.getElementById("saveNote");if(n)n.textContent=state==="saving"?"Saving…":state==="saved"?"Saved ✓":state==="error"?"Not saved. Check your connection and try again.":"Changes save automatically";}
+function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(flushSave,700);}
+let savingNow=null;
+async function flushSave(){
+  clearTimeout(saveTimer);
+  if(savingNow){await savingNow;}
+  const out=draftOut();
+  if(!out||sameAsSaved(out))return true;
+  setSaveNote("saving");
+  savingNow=saveStore(out);
+  const ok=await savingNow;savingNow=null;
+  setSaveNote(ok?"saved":"error");
+  if(ok){
+    const a=document.activeElement;
+    if(!(S.view==="edit"&&a&&view.contains(a)&&a.tagName==="INPUT"))draft=null;
+    if(S.view==="edit")render();
+  }
+  return ok;
+}
+window.addEventListener("pagehide",()=>{try{if(S.view==="edit"){syncDraft();const out=draftOut();if(out&&!sameAsSaved(out))fetch(API,{method:"POST",keepalive:true,headers:{"content-type":"application/json"},body:JSON.stringify({action:"saveStore",args:[S.pin||"",out]})});}}catch(e){}});
+view.addEventListener("change",e=>{if(S.view==="edit"&&(e.target.closest("table.ed")||e.target.id==="stName")){syncDraft();scheduleSave();}});
 view.addEventListener("focusout",e=>{if(S.view==="edit"&&e.target.closest("table.ed")){syncDraft();const inp=e.target;const f=inp.dataset.f;if(f&&f[0]==="d"){const c=classify(inp.value);inp.classList.toggle("bad",!!inp.value&&c.kind==="work"&&c.start==null&&!/^(commercial|open)/i.test(inp.value.trim()));}}});
 view.addEventListener("submit",async e=>{
   if(e.target.id!=="ptoForm")return;
@@ -702,12 +797,10 @@ view.addEventListener("submit",async e=>{
   const f=e.target;
   if(!f.emp.value)return toast("Choose an employee");
   const [storeId,empId]=f.emp.value.split("|");
-  let start=f.start.value,end=f.end.value;
-  if(!start||!end)return toast("Pick the dates");
-  if(end<start)[start,end]=[end,start];
+  const r=ptoFromForm(f);if(!r)return;
   const st=storeById(storeId);const emp=st&&st.employees.find(x=>x.id===empId);
-  const p={id:uid(),storeId,empId,name:emp?emp.name:"",start,end,type:f.type.value,note:f.note.value.trim(),createdAt:new Date().toISOString()};
-  if(await addPto(p))toast("PTO saved for "+p.name);
+  const p={id:uid(),storeId,empId,name:emp?emp.name:"",...r};
+  if(await addPto(p))toast((isLeave(p)?"Leave":"PTO")+" saved for "+cleanName(p.name));
 });
 
 setInterval(()=>{if(S.view==="today"&&S.date===todayIso()&&!document.getElementById("scrim").classList.contains("open"))render();},60000);
