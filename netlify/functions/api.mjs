@@ -3,7 +3,7 @@ import { getStore } from "@netlify/blobs";
 /*
  * Store Schedules API for The Floor Store.
  *   GET  /api  -> { stores, ov, pto, pinRequired }
- *   POST /api  -> { action, args:[pin, ...] }  actions: checkPin, saveStore, setChange, addPto, deletePto
+ *   POST /api  -> { action, args:[pin, ...] }  actions: checkPin, saveStore, setChange, addPto, updatePto, deletePto
  * Data lives in Netlify Blobs (store "floor-store-schedules"), keys: stores, changes, pto.
  * Set MANAGER_PIN in Netlify > Site configuration > Environment variables to require a PIN for edits.
  */
@@ -89,16 +89,25 @@ export default async (req) => {
       await store.setJSON("changes", d.ov);
       break;
     }
-    case "addPto": {
+    case "addPto":
+    case "updatePto": {
       const p = args[1] || {};
       let start = str(p.start, 10), end = str(p.end, 10) || start;
-      if (!isDate(start) || !isDate(end)) return json({ error: "Bad dates" }, 400);
+      const returnDate = str(p.returnDate, 10);
+      if (!isDate(start) || !isDate(end) || (returnDate && !isDate(returnDate))) return json({ error: "Bad dates" }, 400);
       if (end < start) [start, end] = [end, start];
-      d.pto.push({
-        id: str(p.id, 40) || Math.random().toString(36).slice(2, 12),
-        storeId: str(p.storeId, 60), empId: str(p.empId, 60), name: str(p.name, 60),
-        start, end, type: str(p.type, 30), note: str(p.note, 200), createdAt: new Date().toISOString(),
-      });
+      const fields = { start, end, returnDate, type: str(p.type, 40), note: str(p.note, 200) };
+      if (action === "addPto") {
+        d.pto.push({
+          id: str(p.id, 40) || Math.random().toString(36).slice(2, 12),
+          storeId: str(p.storeId, 60), empId: str(p.empId, 60), name: str(p.name, 60),
+          ...fields, createdAt: new Date().toISOString(),
+        });
+      } else {
+        const i = d.pto.findIndex((x) => x.id === str(p.id, 40));
+        if (i < 0) return json({ error: "Not found" }, 404);
+        d.pto[i] = { ...d.pto[i], ...fields, updatedAt: new Date().toISOString() };
+      }
       await store.setJSON("pto", d.pto);
       break;
     }
