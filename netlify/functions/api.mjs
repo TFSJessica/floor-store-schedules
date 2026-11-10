@@ -3,7 +3,7 @@ import { getStore } from "@netlify/blobs";
 /*
  * Store Schedules API for The Floor Store.
  *   GET  /api  -> { stores, ov, pto, pinRequired }
- *   POST /api  -> { action, args:[pin, ...] }  actions: checkPin, saveStore, setChange, addPto, updatePto, deletePto
+ *   POST /api  -> { action, args:[pin, ...] }  actions: checkPin, saveStore, setChange, addPto, updatePto, importPto, deletePto
  * Data lives in Netlify Blobs (store "floor-store-schedules"), keys: stores, changes, pto.
  * Set MANAGER_PIN in Netlify > Site configuration > Environment variables to require a PIN for edits.
  */
@@ -109,6 +109,29 @@ export default async (req) => {
         d.pto[i] = { ...d.pto[i], ...fields, updatedAt: new Date().toISOString() };
       }
       await store.setJSON("pto", d.pto);
+      break;
+    }
+    case "importPto": {
+      const list = Array.isArray(args[1]) ? args[1].slice(0, 500) : [];
+      const key = (x) => [x.storeId, x.empId, x.start, x.end, x.type].join("|");
+      const have = new Set(d.pto.map(key));
+      let added = 0;
+      for (const p of list) {
+        let start = str(p && p.start, 10), end = str(p && p.end, 10) || start;
+        const returnDate = str(p && p.returnDate, 10);
+        if (!isDate(start) || !isDate(end) || (returnDate && !isDate(returnDate))) continue;
+        if (end < start) [start, end] = [end, start];
+        const rec = {
+          id: str(p.id, 40) || Math.random().toString(36).slice(2, 12),
+          storeId: str(p.storeId, 60), empId: str(p.empId, 60), name: str(p.name, 60),
+          start, end, returnDate, type: str(p.type, 40), note: str(p.note, 200), createdAt: new Date().toISOString(),
+        };
+        if (!rec.storeId || !rec.empId || have.has(key(rec))) continue;
+        have.add(key(rec));
+        d.pto.push(rec);
+        added++;
+      }
+      if (added) await store.setJSON("pto", d.pto);
       break;
     }
     case "deletePto": {
