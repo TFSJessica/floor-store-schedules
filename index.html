@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Store Schedules</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#1a1a1a; --ink-2:#333; --muted:#888; --muted-2:#aaa; --line:rgba(0,0,0,0.08);
+  --brand:#1b4d3e; --red:#dc2626; --amber:#d97706; --blue:#3b82f6; --green:#16a34a; --cream:#f5f0ea;
+  --pto:#d97706; --pto-soft:rgba(217,119,6,.12); --leave:#3b82f6; --leave-soft:rgba(59,130,246,.12);
+  --off:#aaa; --danger:#dc2626;
+  /* Swap in the real wood photo: --wood-img:url('data:image/jpeg;base64,...') */
+  --wood-img:none;
+}
+*{box-sizing:border-box}
+html{background:#e7d8c1}
+body{margin:0;color:var(--ink);font-family:"DM Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased;min-height:100vh;
+  background-color:#e7d8c1;
+  background-image:var(--wood-img),
+    repeating-linear-gradient(0deg,rgba(95,62,30,.10) 0 1px,transparent 1px 148px),
+    repeating-linear-gradient(90deg,rgba(140,100,60,.045) 0 1px,transparent 1px 7px),
+    repeating-linear-gradient(90deg,rgba(120,80,45,.05) 0 2px,transparent 2px 31px),
+    repeating-linear-gradient(93deg,rgba(255,255,255,.10) 0 40px,transparent 40px 97px),
+    linear-gradient(90deg,#ecdec8,#e2cfb2 22%,#ede1cd 45%,#dfcaab 70%,#eadcc5);
+  background-size:cover,auto,auto,auto,auto,auto;background-attachment:fixed}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+.wrap{max-width:1100px;margin:0 auto;padding:16px 14px 104px}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.fade>*{animation:fadeUp .25s ease both}
+.glass{background:rgba(255,255,255,0.88);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.7);border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.08)}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;padding:14px 18px}
+.logo{white-space:nowrap;font-family:"Bebas Neue",sans-serif;font-size:32px;line-height:.9;letter-spacing:.06em;color:var(--brand)}
+.logo small{display:block;font-family:"DM Sans",sans-serif;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-top:5px}
+@media (max-width:420px){.logo{font-size:27px}}
+header.top .sub{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;text-align:right}
+.lbl{font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:600;color:var(--muted)}
+.datebar{margin:0 0 10px;padding:12px 14px}
+.navrow{display:flex;align-items:center;gap:8px}
+.brandline{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:0 2px}
+.datebar .brandline .logo{font-size:22px;line-height:1}
+.datebar .brandline .sub{overflow:hidden;text-overflow:ellipsis;min-width:0;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;white-space:nowrap}
+.brandline+.navrow{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.row.slim{padding:9px 18px;gap:10px}
+.row.slim .who{display:flex;align-items:center;min-width:0}
+.sdot{width:8px;height:8px;border-radius:50%;flex:none;background:transparent;box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.18)}
+.sdot.now{background:var(--green);box-shadow:0 0 0 3px rgba(22,163,74,.15)}
+.sdot.done{background:rgba(0,0,0,.15);box-shadow:none}
+.chgmark{width:6px;height:6px;border-radius:50%;background:var(--brand);margin-left:5px;flex:none}
+.storegrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-items:stretch}
+@media (min-width:1000px){.storegrid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}}
+.storegrid .card{margin:0;display:flex;flex-direction:column}
+.storegrid .card-h{padding:10px 12px;gap:7px;background:var(--sc);border-bottom:0}
+.storegrid .card-h .dot{display:none}
+.storegrid .card-h h3{font-size:18px;letter-spacing:.1em;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.storegrid .card-h .count{font-size:11px;background:rgba(255,255,255,.2);border-radius:999px;padding:2px 8px;color:#fff}
+.storegrid .card .row:first-of-type{border-top:0}
+@media (max-width:520px){.storegrid .card-h h3{font-size:16px;letter-spacing:.05em}.storegrid .card-h{padding:9px 10px}.storegrid .row.slim{padding:7px 10px}}
+.storegrid .row.slim{padding:7px 12px;gap:7px}
+.storegrid .row .name{font-size:13px}
+.storegrid .row .time{font-size:12px;font-weight:600}
+.storegrid .sdot{width:7px;height:7px}
+.storegrid .empty{padding:8px 12px 12px;font-size:12px}
+.sumline{margin-top:10px;padding-top:9px;border-top:1px solid var(--line);font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-weight:600;color:var(--ink-2);text-align:center}
+.outstrip{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 10px;padding:10px 14px;background:rgba(255,255,255,0.82);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.7);border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,0.07)}
+.outstrip .lbl{margin-right:4px}
+.outchip{border:0;border-radius:999px;padding:5px 10px;font-size:12px;background:var(--pto-soft);color:var(--pto)}
+.outchip b{color:var(--ink);font-weight:600}
+.outchip.leave{background:var(--leave-soft);color:var(--leave)}
+.datebar .title{flex:1;min-width:0}
+.datebar .big{font-family:"Bebas Neue",sans-serif;font-size:26px;letter-spacing:.05em;line-height:1}
+.datebar .small{font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:600;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.iconbtn{width:38px;height:38px;border-radius:10px;border:1.5px solid rgba(0,0,0,0.1);background:rgba(255,255,255,0.6);display:grid;place-items:center;font-size:18px;flex:none;color:var(--ink)}
+.iconbtn:hover{background:#fff}
+.pill{border:1.5px solid rgba(0,0,0,0.1);background:rgba(255,255,255,0.6);border-radius:999px;padding:7px 13px;font-size:11px;font-weight:600;white-space:nowrap;color:var(--ink);display:inline-flex;align-items:center;gap:6px}
+.pill.on{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:2px 14px 10px;scrollbar-width:none;margin:0 -14px}
+.chips::-webkit-scrollbar{display:none}
+.search,.form input,.form select,.form textarea{width:100%;padding:10px 12px;border-radius:8px;border:1.5px solid rgba(0,0,0,0.15);background:rgba(255,255,255,0.9);font-size:14px;outline:none;transition:border-color .15s}
+.search:focus,.form input:focus,.form select:focus,table.ed input:focus{border-color:#1a1a1a}
+.search{margin-bottom:10px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+.stat{background:rgba(255,255,255,0.82);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-radius:14px;padding:12px 16px;box-shadow:0 2px 8px rgba(0,0,0,0.07);border:1px solid rgba(255,255,255,0.7)}
+.stat b{display:block;font-family:"Bebas Neue",sans-serif;font-size:34px;font-weight:400;line-height:1;letter-spacing:.03em}
+.stat span{font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:600;color:var(--muted)}
+.card{background:rgba(255,255,255,0.88);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.7);border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.08);margin-bottom:10px;overflow:hidden}
+.card-h{display:flex;align-items:center;gap:10px;padding:14px 18px 10px}
+.card-h h3{margin:0;font-family:"Bebas Neue",sans-serif;font-weight:400;font-size:20px;letter-spacing:.12em;flex:1;line-height:1}
+.card-h .count{font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:600;color:var(--muted)}
+.dot{width:10px;height:10px;border-radius:50%;flex:none}
+.stag{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fff;border-radius:6px;padding:3px 7px}
+.row{display:flex;align-items:center;gap:12px;padding:10px 18px;border-top:1px solid var(--line);cursor:pointer}
+.row:hover{background:rgba(255,255,255,.5)}
+.row .who{flex:1;min-width:0}
+.row .name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px}
+.row .meta{font-size:12px;color:var(--muted);margin-top:1px}
+.row .time{font-weight:700;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap;font-size:14px}
+.row .hrs{font-size:10px;color:var(--muted);text-align:right;text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+.row.done{opacity:.5}
+.av{width:32px;height:32px;border-radius:50%;color:#fff;display:grid;place-items:center;font-size:12px;font-weight:700;flex:none;letter-spacing:.02em}
+.tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;letter-spacing:.06em;vertical-align:1px;text-transform:uppercase}
+.tag.now{background:rgba(22,163,74,.12);color:var(--green)}
+.tag.pto{background:var(--pto-soft);color:var(--pto)}
+.tag.leave{background:var(--leave-soft);color:var(--leave)}
+.tag.chg{background:rgba(27,77,62,.1);color:var(--brand)}
+.bar{position:relative;height:5px;border-radius:3px;background:rgba(0,0,0,0.1);margin-top:6px}
+.bar i{position:absolute;top:0;bottom:0;border-radius:3px;background:var(--brand)}
+.bar u{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--red);border-radius:1px}
+.empty{padding:12px 18px 16px;color:var(--muted);font-size:13px}
+.section-title{font-family:"Bebas Neue",sans-serif;font-size:18px;letter-spacing:.12em;color:var(--ink);margin:18px 4px 8px}
+/* week grid */
+.gridwrap{overflow-x:auto}
+table.wk{border-collapse:separate;border-spacing:0;width:100%;min-width:760px;font-size:13px}
+table.wk{table-layout:fixed}table.wk th.nm{width:150px}table.wk th:last-child{width:60px}
+table.wk th,table.wk td{border-top:1px solid var(--line);padding:0;text-align:center}
+table.wk th{font-size:10px;font-weight:600;color:var(--muted);padding:8px 4px;text-transform:uppercase;letter-spacing:.08em}
+table.wk th.today{color:var(--brand)}
+table.wk th .d{display:block;font-family:"Bebas Neue",sans-serif;font-size:20px;font-weight:400;color:var(--ink);letter-spacing:.04em;margin-top:1px}
+table.wk th.today .d{color:var(--brand)}
+table.wk td.nm,table.wk th.nm{position:sticky;left:0;background:rgba(255,255,255,.96);text-align:left;padding:8px 14px;font-weight:600;white-space:nowrap;z-index:1;border-right:1px solid var(--line)}
+table.wk td.tot{font-weight:700;color:var(--muted);padding:8px;font-variant-numeric:tabular-nums;font-size:12px}
+.cellbtn{display:block;width:100%;min-height:46px;border:0;background:transparent;padding:6px 3px;font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.25;position:relative;color:var(--ink)}
+.cellbtn:hover{background:rgba(0,0,0,.035)}
+.cellbtn.off{color:var(--off);font-weight:500}
+.cellbtn.pto{background:var(--pto-soft);color:var(--pto)}
+.cellbtn.leave{background:var(--leave-soft);color:var(--leave)}
+.cellbtn.today{box-shadow:inset 0 0 0 2px rgba(27,77,62,.18)}
+.cellbtn .chgdot{position:absolute;top:5px;right:5px;width:6px;height:6px;border-radius:50%;background:var(--brand)}
+.cellbtn small{display:block;font-weight:500;font-size:10.5px;opacity:.75}
+.daytot td{font-size:10px;color:var(--muted);padding:6px 2px !important;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+/* month */
+.mgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;padding:12px}
+.mhead{font-size:10px;font-weight:600;color:var(--muted);text-align:center;padding:2px 0 4px;text-transform:uppercase;letter-spacing:.08em}
+.mcell{background:rgba(255,255,255,.7);border:1px solid var(--line);border-radius:10px;min-height:80px;padding:6px;text-align:left;display:flex;flex-direction:column;gap:3px;overflow:hidden;color:var(--ink)}
+.mcell:hover{background:#fff}
+.mcell.other{opacity:.4}
+.mcell.today{border-color:#1a1a1a;box-shadow:inset 0 0 0 1px #1a1a1a}
+.mcell .n{font-family:"Bebas Neue",sans-serif;font-size:19px;line-height:1;letter-spacing:.04em}
+.mcell .c{font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.mcell .p{font-size:10px;font-weight:700;color:var(--pto);background:var(--pto-soft);border-radius:4px;padding:1px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:560px){.mgrid{gap:3px;padding:8px}.mcell{min-height:66px;padding:4px}.mcell .p{font-size:9px;padding:0 3px}.mcell .c{font-size:9px;letter-spacing:0}}
+/* forms */
+.form{padding:6px 18px 18px;display:grid;gap:10px}
+.form label{display:grid;gap:5px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:600;color:var(--muted)}
+.form label input,.form label select{text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{border:0;border-radius:10px;padding:12px 16px;font-weight:700;font-size:13px;background:#1a1a1a;color:#fff;transition:background .15s}
+.btn:hover{background:#333}
+.btn.ghost{background:rgba(255,255,255,.6);border:1.5px solid rgba(0,0,0,0.1);color:var(--ink)}
+.btn.ghost:hover{background:#fff}
+.btn.danger{background:rgba(255,255,255,.6);border:1.5px solid rgba(220,38,38,.3);color:var(--red)}
+.btn.sm{padding:8px 12px;font-size:12px}
+.btn:disabled{opacity:.45;cursor:default}
+.quick{display:flex;flex-wrap:wrap;gap:6px}
+.quick button{border:1.5px solid rgba(0,0,0,0.1);background:rgba(255,255,255,.6);border-radius:999px;padding:6px 11px;font-size:11px;font-weight:600}
+.quick button:hover{background:#fff}
+/* edit template */
+table.ed{border-collapse:separate;border-spacing:0;min-width:900px;width:100%;padding:0 12px}
+table.ed th{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:600;padding:6px 4px;text-align:left}
+table.ed td{padding:3px}
+table.ed input{width:100%;padding:8px 8px;border-radius:8px;border:1.5px solid rgba(0,0,0,0.15);background:rgba(255,255,255,.9);font-size:13px;outline:none}
+table.ed input.nm{font-weight:600}
+table.ed input.bad{border-color:var(--red)}
+/* nav */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:center;padding:8px 10px calc(10px + env(safe-area-inset-bottom));z-index:20;pointer-events:none}
+nav.tabs .in{display:flex;max-width:520px;width:100%;gap:2px;padding:5px;pointer-events:auto;background:rgba(255,255,255,0.88);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.7);border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,0.12)}
+nav.tabs button{flex:1;border:0;background:transparent;padding:7px 0 6px;display:grid;justify-items:center;gap:2px;font-size:11px;font-weight:500;color:rgba(0,0,0,0.4);border-radius:11px}
+nav.tabs button svg{width:20px;height:20px}
+nav.tabs button.on{background:#1a1a1a;color:#fff;font-weight:700}
+/* modal */
+.scrim{position:fixed;inset:0;background:rgba(26,26,26,.35);display:none;align-items:flex-end;justify-content:center;z-index:50}
+.scrim.open{display:flex}
+.sheet{background:rgba(255,255,255,0.96);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);width:100%;max-width:480px;border-radius:16px 16px 0 0;max-height:90vh;overflow:auto;padding-bottom:env(safe-area-inset-bottom);box-shadow:0 4px 20px rgba(0,0,0,0.15);animation:fadeUp .25s ease}
+@media (min-width:640px){.scrim{align-items:center}.sheet{border-radius:16px}}
+.sheet-h{display:flex;align-items:center;gap:10px;padding:16px 18px 8px}
+.sheet-h h3{margin:0;flex:1;font-family:"Bebas Neue",sans-serif;font-weight:400;font-size:22px;letter-spacing:.08em}
+.sheet .actions{display:flex;gap:8px;padding:0 18px 16px;flex-wrap:wrap}
+.sheet .actions .btn{flex:1}
+.toast{position:fixed;left:50%;bottom:92px;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:600;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+.banner{background:rgba(245,240,234,.92);border:1px solid rgba(0,0,0,.06);border-radius:14px;padding:12px 14px;font-size:13px;margin-bottom:10px;line-height:1.45}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:600;color:var(--ink-2);margin:2px 4px 10px}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.ptolist .row{cursor:default}
+.ptolist .row .time{font-size:13px}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <div id="view"></div>
+</div>
+
+<nav class="tabs"><div class="in">
+  <button data-v="today"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Today</button>
+  <button data-v="week"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="15" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8 14h1M12 14h1M16 14h1"/></svg>Week</button>
+  <button data-v="month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="15" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M7 14h2M11 14h2M15 14h2M7 17h2M11 17h2"/></svg>Month</button>
+  <button data-v="pto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v2M5 12H3M21 12h-2M6.3 6.3 4.9 4.9M17.7 6.3l1.4-1.4"/><circle cx="12" cy="12" r="4"/><path d="M4 20h16"/></svg>PTO</button>
+  <button data-v="edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13 7l4 4"/></svg>Edit</button>
+</div></nav>
+
+<div class="scrim" id="scrim"><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+/* ---------- helpers ---------- */
+const DAYS=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+const DAYS_LONG=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+const COLORS=["#2d5016","#5c3d11","#1a3a5c","#5c1a2d","#3d2d5c","#1a4a3d","#5c2d1a","#4a1a3d","#5c4a1a","#1a2d5c","#3d5c1a","#2d4a1a"];
+const PTO_TYPES=["Vacation","Sick","Personal","Bereavement","Jury duty","Unpaid","Other"];
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad=n=>String(n).padStart(2,"0");
+const iso=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const fromIso=s=>{const [y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d);};
+const addDays=(s,n)=>{const d=fromIso(s);d.setDate(d.getDate()+n);return iso(d);};
+const dow=s=>(fromIso(s).getDay()+6)%7; // Mon=0
+const weekStart=s=>addDays(s,-dow(s));
+const todayIso=()=>iso(new Date());
+const monthKey=s=>s.slice(0,7);
+const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
+const titleCase=s=>s.toLowerCase().replace(/\b\w/g,c=>c.toUpperCase());
+
+function parseTime(t){
+  t=t.trim().toLowerCase().replace(/\s+/g,"").replace(/\./g,"");
+  const m=t.match(/^(\d{1,2})(?::?(\d{2}))?(am|pm|a|p)?$/);
+  if(!m) return null;
+  let h=+m[1],mi=m[2]?+m[2]:0;const ap=m[3]?m[3][0]:null;
+  if(h>24||mi>59) return null;
+  if(ap==="a"&&h===12)h=0;
+  if(ap==="p"&&h<12)h+=12;
+  return {min:h*60+mi,explicit:!!ap||h>12||h===0};
+}
+function parseRange(s){
+  const parts=s.split(/\s*(?:-|–|—|\bto\b)\s*/i).filter(Boolean);
+  if(parts.length!==2) return null;
+  const a=parseTime(parts[0]),b=parseTime(parts[1]);
+  if(!a||!b) return null;
+  let st=a.min,en=b.min;
+  if(!a.explicit&&st<6*60&&st>=60) st+=720;
+  if(!b.explicit&&en<=st&&en+720>st) en+=720;
+  return {start:st,end:en};
+}
+function fmt(min){
+  min=((min%1440)+1440)%1440;
+  const h=Math.floor(min/60),m=min%60;
+  return (h%12||12)+(m?":"+pad(m):"")+(h<12?"a":"p");
+}
+function fmtLong(min){
+  min=((min%1440)+1440)%1440;
+  const h=Math.floor(min/60),m=min%60;
+  return (h%12||12)+(m?":"+pad(m):"")+(h<12?"AM":"PM");
+}
+function durH(c){let d=c.end-c.start;if(d<=0)d+=1440;return d/60;}
+const hrsTxt=h=>(Math.round(h*10)/10)+"h";
+
+/* Classify a schedule cell string. kinds: work | off | leave */
+function classify(raw){
+  let s=String(raw||"").replace(/\(\s*pt\s*\)/ig,"").trim();
+  if(!s) return {kind:"off",label:""};
+  const u=s.toUpperCase();
+  if(/^(OFF|X|-|N\/A|NA|NONE)$/.test(u)) return {kind:"off",label:"Off"};
+  if(/^CLOSED/.test(u)) return {kind:"off",label:"Closed"};
+  if(/^(FMLA|LOA|LEAVE|MATERNITY|PATERNITY|DISABILITY|PTO|VACATION|SICK)/.test(u)) return {kind:"leave",label:u.length<=5?u:titleCase(s)};
+  const r=parseRange(s);
+  if(r) return {kind:"work",start:r.start,end:r.end,label:""};
+  return {kind:"work",label:titleCase(s)}; // e.g. Commercial Day, Open
+}
+
+/* ---------- state ---------- */
+const S={
+  stores:[], ov:{}, pto:[], pin:null, pinRequired:true,
+  view:"today", date:todayIso(), store:"all", q:"", editStore:null,
+  db:null, ready:{stores:false,pto:false}, readOnly:false, offline:false
+};
+try{const v=localStorage.getItem("sched.view");if(v)S.view=v;const st=localStorage.getItem("sched.store");if(st)S.store=st;}catch(e){}
+if(location.hash){const h=location.hash.slice(1);if(["today","week","month","pto","edit"].includes(h))S.view=h;}
+
+function storeById(id){return S.stores.find(s=>s.id===id);}
+function storeColor(s,i){return s.color||COLORS[(i==null?S.stores.indexOf(s):i)%COLORS.length];}
+function visibleStores(){return S.store==="all"?S.stores:S.stores.filter(s=>s.id===S.store);}
+function matchQ(name){return !S.q||name.toLowerCase().includes(S.q.toLowerCase());}
+
+function ptoFor(storeId,empId,date){
+  return S.pto.find(p=>p.storeId===storeId&&p.empId===empId&&p.start<=date&&p.end>=date);
+}
+/* Effective schedule for an employee on a date */
+function effective(store,emp,date){
+  const ov=S.ov[store.id+"|"+emp.id+"|"+date];
+  const raw=ov!=null?ov:(emp.days||[])[dow(date)];
+  const c=classify(raw);
+  c.raw=raw||"";c.changed=ov!=null;
+  const p=ptoFor(store.id,emp.id,date);
+  if(p){c.pto=p;c.scheduled=c.kind==="work";}
+  return c;
+}
+
+/* ---------- data layer (Netlify Function + Netlify Blobs) ---------- */
+const slug=x=>String(x||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+const API="/api";
+async function call(fn,...args){
+  if(location.protocol==="file:")throw new Error("offline");
+  const r=fn==="getData"
+    ?await fetch(API,{cache:"no-store"})
+    :await fetch(API,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:fn,args})});
+  if(r.status===403)throw new Error("PIN");
+  if(!r.ok)throw new Error("HTTP "+r.status);
+  return r.json();
+}
+try{S.pin=localStorage.getItem("sched.pin");}catch(e){}
+function applyData(d){
+  if(!d)return;
+  S.stores=(d.stores||[]).map(s=>({...s,employees:(s.employees||[]).map(e=>({...e,days:(e.days||[]).concat(Array(7).fill("")).slice(0,7)}))}));
+  S.ov=d.ov||{};S.pto=d.pto||[];S.pinRequired=!!d.pinRequired;
+  S.ready.stores=true;S.ready.pto=true;
+  if(S.store!=="all"&&!storeById(S.store))S.store="all";
+  const t=new Date();
+  setStatus("Updated "+fmtLong(t.getHours()*60+t.getMinutes()));
+  render();
+}
+let loading=false;
+async function load(){
+  if(loading)return;loading=true;
+  try{applyData(await call("getData"));}
+  catch(e){if(String(e.message||e)==="offline"){S.offline=true;setStatus("Preview only");render();}else{setStatus("Couldn't reach the schedule. Retrying…");}}
+  finally{loading=false;}
+}
+function askPin(){
+  return new Promise(resolve=>{
+    openSheet(`<div class="sheet-h"><h3>Manager PIN</h3><button class="iconbtn" data-close aria-label="Close">✕</button></div>
+      <form class="form" id="pinForm"><div style="font-size:13px;color:var(--muted)">Enter the manager PIN to make changes. You'll only need to do this once on this device.</div>
+      <input id="pinIn" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN" required>
+      <div id="pinErr" style="color:var(--red);font-size:12px;font-weight:600;display:none">That PIN didn't work.</div>
+      <button class="btn" type="submit">Unlock</button></form>`);
+    const sh=document.getElementById("sheet");
+    sh.querySelector("[data-close]").onclick=()=>{closeSheet();resolve(null);};
+    setTimeout(()=>sh.querySelector("#pinIn").focus(),50);
+    sh.querySelector("#pinForm").onsubmit=async e=>{
+      e.preventDefault();
+      const v=sh.querySelector("#pinIn").value.trim();
+      let ok=false;try{ok=await call("checkPin",v);}catch(x){}
+      if(!ok){sh.querySelector("#pinErr").style.display="block";return;}
+      S.pin=v;try{localStorage.setItem("sched.pin",v);}catch(x){}
+      closeSheet();resolve(v);
+    };
+  });
+}
+async function needPin(){
+  if(!S.pinRequired)return "";
+  if(S.pin)return S.pin;
+  return askPin();
+}
+async function write(fn,...args){
+  if(S.offline){toast("Open the live site to save");return false;}
+  const pin=await needPin();
+  if(pin===null)return false;
+  setStatus("Saving…");
+  try{applyData(await call(fn,pin,...args));return true;}
+  catch(e){
+    const m=String((e&&e.message)||e);
+    if(m.includes("PIN")){S.pin=null;try{localStorage.removeItem("sched.pin");}catch(x){}toast("PIN didn't work. Try again.");}
+    else toast("Couldn't save. Check your connection.");
+    load();return false;
+  }
+}
+function saveStore(store){
+  return write("saveStore",{id:store.id,name:store.name,employees:store.employees.map(e=>({id:e.id||"",name:e.name,days:e.days}))});
+}
+function setOverride(storeId,empId,date,value){
+  const st=storeById(storeId);const emp=st&&st.employees.find(e=>e.id===empId);
+  if(!st||!emp)return Promise.resolve(false);
+  return write("setChange",storeId,empId,date,value);
+}
+function addPto(p){return write("addPto",p);}
+function delPto(id){return write("deletePto",id);}
+function subscribeOverrides(){}
+function connect(){
+  load();
+  setInterval(()=>{if(document.visibilityState==="visible"&&!document.getElementById("scrim").classList.contains("open")&&!(S.view==="edit"&&draftDirty()))load();},60000);
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")load();});
+}
+function setStatus(t){S.status=t;const el=document.getElementById("status");if(el)el.textContent=t;}
+
+/* ---------- UI bits ---------- */
+let toastT;
+function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("show"),2200);}
+function openSheet(html){const sh=document.getElementById("sheet");sh.innerHTML=html;document.getElementById("scrim").classList.add("open");}
+function closeSheet(){document.getElementById("scrim").classList.remove("open");}
+document.getElementById("scrim").addEventListener("click",e=>{if(e.target.id==="scrim")closeSheet();});
+
+function dateLabel(d){const x=fromIso(d);return DAYS_LONG[dow(d)]+", "+MONTHS[x.getMonth()].slice(0,3)+" "+x.getDate();}
+function relLabel(d){const t=todayIso();if(d===t)return "Today";if(d===addDays(t,1))return "Tomorrow";if(d===addDays(t,-1))return "Yesterday";return fromIso(d).getFullYear()+"";}
+function storeChips(){
+  return `<div class="chips">${[`<button class="pill ${S.store==="all"?"on":""}" data-store="all">All stores</button>`].concat(S.stores.map((s,i)=>`<button class="pill ${S.store===s.id?"on":""}" data-store="${esc(s.id)}"><span class="dot" style="background:${storeColor(s,i)};width:8px;height:8px"></span>${esc(s.name)}</button>`)).join("")}</div>`;
+}
+function initials(n){const p=String(n).replace(/\(.*?\)/g,'').trim().split(/\s+/);return ((p[0]||'')[0]||'').toUpperCase()+((p[1]||'')[0]||'').toUpperCase();}
+function av(name,color){return `<span class="av" style="background:${color}">${esc(initials(name))}</span>`;}
+const SEARCH_ICON=`<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>`;
+function brand(){return `<div class="brandline"><span class="logo">THE FLOOR STORE</span><span class="sub" id="status">${esc(S.status||"")}</span></div>`;}
+function nowMin(){const n=new Date();return n.getHours()*60+n.getMinutes();}
+
+/* ---------- views ---------- */
+function viewToday(){
+  const d=S.date,isToday=d===todayIso(),nm=nowMin();
+  let working=0,onNow=0,out=0;
+  const outList=[];
+  const cards=visibleStores().map(store=>{
+    const i=S.stores.indexOf(store);
+    const rows=[];
+    store.employees.forEach(emp=>{
+      if(!matchQ(emp.name))return;
+      const c=effective(store,emp,d);
+      if(c.pto){out++;outList.push({store,emp,c,why:c.pto.type||"PTO",cls:"pto"});return;}
+      if(c.kind==="leave"){out++;outList.push({store,emp,c,why:c.label,cls:"leave"});return;}
+      if(c.kind!=="work")return;
+      working++;
+      let state="";
+      if(isToday&&c.start!=null){
+        let e=c.end<=c.start?c.end+1440:c.end;
+        if(nm>=c.start&&nm<e){state="now";onNow++;}else if(nm>=e)state="done";
+      }
+      rows.push({emp,c,state});
+    });
+    rows.sort((a,b)=>(a.c.start??9999)-(b.c.start??9999)||a.emp.name.localeCompare(b.emp.name));
+    if(S.q&&!rows.length)return "";
+    const body=rows.length?rows.map(r=>{
+      const c=r.c;
+      const time=c.start!=null?`${fmt(c.start)}–${fmt(c.end)}`:esc(c.label);
+      return `<div class="row slim ${r.state==="done"?"done":""}" data-cell="${esc(store.id)}|${esc(r.emp.id)}|${d}">
+        <span class="sdot ${r.state}" title="${r.state==="now"?"On now":r.state==="done"?"Shift over":""}"></span>
+        <div class="who"><span class="name">${esc(r.emp.name)}</span>${c.changed?' <span class="chgmark" title="Changed for this day"></span>':""}</div>
+        <div class="time">${time}</div></div>`;
+    }).join(""):`<div class="empty">${store.employees.length?"No one scheduled":"No employees set up yet"}</div>`;
+    return `<div class="card" style="--sc:${storeColor(store,i)}"><div class="card-h"><span class="dot"></span><h3>${esc(store.name)}</h3><span class="count">${rows.length}</span></div>${body}</div>`;
+  }).join("");
+  const outHtml=outList.length?`<div class="outstrip"><span class="lbl">Out ${isToday?"today":""}</span>${outList.map(o=>`<button class="outchip ${o.cls}" data-cell="${esc(o.store.id)}|${esc(o.emp.id)}|${d}"><b>${esc(o.emp.name)}</b> ${esc(o.cls==="pto"?o.why:String(o.why).toUpperCase())}</button>`).join("")}</div>`:"";
+  const showSearch=S.showSearch||!!S.q;
+  const summary=`${working} working${isToday?` · <span style="color:var(--green)">${onNow} on now</span>`:""} · ${out} out`;
+  return `
+  <div class="datebar glass">${brand()}<div class="navrow">
+    <button class="iconbtn" data-nav="-1" aria-label="Previous day">‹</button>
+    <div class="title"><div class="big">${dateLabel(d)}</div><div class="small">${isToday?"Today":relLabel(d)}</div></div>
+    ${isToday?"":`<button class="pill" data-go-today>Today</button>`}
+    <button class="iconbtn" data-search aria-label="Search">${SEARCH_ICON}</button>
+    <button class="iconbtn" data-nav="1" aria-label="Next day">›</button>
+  </div><div class="sumline">${summary}</div></div>
+  ${storeChips()}
+  ${showSearch?`<input class="search" id="q" placeholder="Find an employee…" value="${esc(S.q)}">`:""}
+  ${outHtml}
+  ${cards?`<div class="storegrid">${cards}</div>`:`<div class="card"><div class="empty">No matches.</div></div>`}`;
+}
+
+function weekCellHtml(store,emp,date){
+  const c=effective(store,emp,date);
+  const isT=date===todayIso();
+  let cls="",txt="";
+  if(c.pto){cls="pto";txt=`PTO<small>${esc(c.pto.type||"")}</small>`;}
+  else if(c.kind==="leave"){cls="leave";txt=esc(c.label);}
+  else if(c.kind==="off"){cls="off";txt=esc(c.label||"Off");}
+  else if(c.start!=null){txt=`${fmt(c.start)}–${fmt(c.end)}<small>${hrsTxt(durH(c))}</small>`;}
+  else txt=esc(c.label);
+  return `<button class="cellbtn ${cls} ${isT?"today":""}" data-cell="${esc(store.id)}|${esc(emp.id)}|${date}">${txt}${c.changed?'<span class="chgdot"></span>':""}</button>`;
+}
+function viewWeek(){
+  const ws=weekStart(S.date),we=addDays(ws,6),t=todayIso();
+  const a=fromIso(ws),b=fromIso(we);
+  const label=`${MONTHS[a.getMonth()].slice(0,3)} ${a.getDate()} – ${a.getMonth()!==b.getMonth()?MONTHS[b.getMonth()].slice(0,3)+" ":""}${b.getDate()}`;
+  const dates=[...Array(7)].map((_,i)=>addDays(ws,i));
+  const cards=visibleStores().map(store=>{
+    const i=S.stores.indexOf(store);
+    const emps=store.employees.filter(e=>matchQ(e.name));
+    if(S.q&&!emps.length)return "";
+    const head=`<tr><th class="nm">Employee</th>${dates.map((d,k)=>`<th class="${d===t?"today":""}">${DAYS[k]}<span class="d">${fromIso(d).getDate()}</span></th>`).join("")}<th>Hrs</th></tr>`;
+    const rows=emps.map(emp=>{
+      let tot=0;
+      const cells=dates.map(d=>{const c=effective(store,emp,d);if(!c.pto&&c.kind==="work"&&c.start!=null)tot+=durH(c);return `<td>${weekCellHtml(store,emp,d)}</td>`;}).join("");
+      return `<tr><td class="nm">${esc(emp.name)}</td>${cells}<td class="tot">${hrsTxt(tot)}</td></tr>`;
+    }).join("");
+    const counts=dates.map(d=>emps.filter(e=>{const c=effective(store,e,d);return !c.pto&&c.kind==="work";}).length);
+    const foot=emps.length?`<tr class="daytot"><td class="nm" style="font-weight:600;color:var(--muted)">Staff</td>${counts.map(n=>`<td>${n}</td>`).join("")}<td></td></tr>`:"";
+    return `<div class="card"><div class="card-h"><span class="dot" style="background:${storeColor(store,i)}"></span><h3>${esc(store.name)}</h3><span class="count">${emps.length} people</span></div>
+      ${emps.length?`<div class="gridwrap"><table class="wk">${head}${rows}${foot}</table></div>`:`<div class="empty">No employees set up yet</div>`}</div>`;
+  }).join("");
+  return `
+  <div class="datebar glass">${brand()}<div class="navrow">
+    <button class="iconbtn" data-nav="-7" aria-label="Previous week">‹</button>
+    <div class="title"><div class="big">${label}</div><div class="small">Week of ${fromIso(ws).getFullYear()}</div></div>
+    ${ws===weekStart(t)?"":`<button class="pill" data-go-today>This week</button>`}
+    <button class="iconbtn" data-search aria-label="Search">${SEARCH_ICON}</button>
+    <button class="iconbtn" data-nav="7" aria-label="Next week">›</button>
+  </div></div>
+  ${storeChips()}
+  ${S.showSearch||S.q?`<input class="search" id="q" placeholder="Find an employee…" value="${esc(S.q)}">`:""}
+  <div class="legend"><span><i style="background:var(--pto-soft);border:1px solid var(--pto)"></i>PTO</span><span><i style="background:var(--leave-soft);border:1px solid var(--leave)"></i>Leave</span><span><i style="background:var(--brand);border-radius:50%;width:7px;height:7px"></i>Changed for that day</span><span>Tap any cell to change it</span></div>
+  ${cards||`<div class="card"><div class="empty">No matches.</div></div>`}`;
+}
+
+function viewMonth(){
+  const first=S.date.slice(0,8)+"01";
+  const f=fromIso(first);
+  const start=weekStart(first);
+  const nextMonth=iso(new Date(f.getFullYear(),f.getMonth()+1,1));
+  const end=addDays(weekStart(addDays(nextMonth,-1)),6);
+  const t=todayIso();
+  const cells=[];
+  for(let d=start;d<=end;d=addDays(d,1)){
+    let n=0;const ptos=[];
+    visibleStores().forEach(store=>store.employees.forEach(emp=>{
+      if(!matchQ(emp.name))return;
+      const c=effective(store,emp,d);
+      if(c.pto)ptos.push(emp.name.split(" ")[0]);
+      else if(c.kind==="work")n++;
+    }));
+    const other=monthKey(d)!==monthKey(first);
+    cells.push(`<button class="mcell ${other?"other":""} ${d===t?"today":""}" data-day="${d}">
+      <span class="n">${fromIso(d).getDate()}</span><span class="c">${n} on</span>
+      ${ptos.slice(0,2).map(p=>`<span class="p">${esc(p)}</span>`).join("")}${ptos.length>2?`<span class="c">+${ptos.length-2} PTO</span>`:""}
+    </button>`);
+  }
+  return `
+  <div class="datebar glass">${brand()}<div class="navrow">
+    <button class="iconbtn" data-mnav="-1" aria-label="Previous month">‹</button>
+    <div class="title"><div class="big">${MONTHS[f.getMonth()]}</div><div class="small">${f.getFullYear()} · tap a day</div></div>
+    ${monthKey(t)===monthKey(first)?"":`<button class="pill" data-go-today>Now</button>`}
+    <button class="iconbtn" data-mnav="1" aria-label="Next month">›</button>
+  </div></div>
+  ${storeChips()}
+  <div class="card"><div class="mgrid">${DAYS.map(x=>`<div class="mhead">${x}</div>`).join("")}${cells.join("")}</div></div>`;
+}
+
+function empOptions(selStore,selEmp){
+  return S.stores.map(s=>`<optgroup label="${esc(s.name)}">${s.employees.map(e=>`<option value="${esc(s.id)}|${esc(e.id)}" ${s.id===selStore&&e.id===selEmp?"selected":""}>${esc(e.name)}</option>`).join("")}</optgroup>`).join("");
+}
+function ptoDays(p){return Math.round((fromIso(p.end)-fromIso(p.start))/864e5)+1;}
+function ptoRange(p){
+  const a=fromIso(p.start),b=fromIso(p.end);
+  const A=MONTHS[a.getMonth()].slice(0,3)+" "+a.getDate();
+  if(p.start===p.end)return DAYS[dow(p.start)]+", "+A;
+  return A+" – "+(a.getMonth()!==b.getMonth()?MONTHS[b.getMonth()].slice(0,3)+" ":"")+b.getDate();
+}
+function brandCard(){return `<div class="datebar glass">${brand()}</div>`;}
+function viewPto(){
+  const t=todayIso();
+  const list=S.pto.filter(p=>(S.store==="all"||p.storeId===S.store)&&matchQ(p.name||""));
+  const cur=list.filter(p=>p.end>=t).sort((a,b)=>a.start.localeCompare(b.start));
+  const past=list.filter(p=>p.end<t).sort((a,b)=>b.start.localeCompare(a.start)).slice(0,30);
+  const row=p=>{const st=storeById(p.storeId);const now=p.start<=t&&p.end>=t;return `<div class="row">
+    ${av(p.name,st?storeColor(st):"#888")}<div class="who"><div class="name">${esc(p.name)} ${now?'<span class="tag pto">OUT NOW</span>':""}</div><div class="meta">${esc(st?st.name:"")} · ${esc(p.type||"PTO")}${p.note?" · "+esc(p.note):""}</div></div>
+    <div><div class="time">${ptoRange(p)}</div><div class="hrs">${ptoDays(p)} day${ptoDays(p)>1?"s":""}</div></div>
+    ${S.readOnly?"":`<button class="iconbtn" data-delpto="${esc(p.id)}" aria-label="Remove PTO" style="width:32px;height:32px;font-size:14px">✕</button>`}</div>`;};
+  const noEmps=!S.stores.some(s=>s.employees.length);
+  return `${brandCard()}
+  ${S.readOnly?"":`<div class="card"><div class="card-h"><h3>Add PTO</h3></div>
+  <form class="form" id="ptoForm">
+    <label>Employee<select name="emp" required>${noEmps?'<option value="">Add employees first</option>':'<option value="">Choose…</option>'+empOptions()}</select></label>
+    <div class="two"><label>First day off<input type="date" name="start" required value="${t}"></label><label>Last day off<input type="date" name="end" required value="${t}"></label></div>
+    <div class="two"><label>Type<select name="type">${PTO_TYPES.map(x=>`<option>${x}</option>`).join("")}</select></label><label>Note<input name="note" placeholder="Optional"></label></div>
+    <button class="btn" type="submit">Save PTO</button>
+  </form></div>`}
+  ${storeChips()}
+  <div class="section-title">Current &amp; upcoming</div>
+  <div class="card ptolist">${cur.length?cur.map(row).join(""):'<div class="empty">No upcoming PTO.</div>'}</div>
+  ${past.length?`<div class="section-title">Past</div><div class="card ptolist">${past.map(row).join("")}</div>`:""}`;
+}
+
+let draft=null;
+function viewEdit(){
+  if(!S.stores.length)return `<div class="card"><div class="empty">${S.offline?"Open the live site to edit schedules.":"No stores yet."}</div></div>`;
+  if(!S.editStore||!storeById(S.editStore))S.editStore=S.stores[0].id;
+  const store=storeById(S.editStore);
+  if(!draft||draft.id!==store.id)draft=JSON.parse(JSON.stringify(store));
+  const rows=draft.employees.map((e,i)=>`<tr data-i="${i}">
+    <td style="min-width:150px"><input class="nm" data-f="name" value="${esc(e.name)}" placeholder="Name"></td>
+    ${e.days.map((v,k)=>{const c=classify(v);const bad=v&&c.kind==="work"&&c.start==null&&!/^(commercial|open)/i.test(v.trim());return `<td style="min-width:104px"><input data-f="d${k}" value="${esc(v)}" placeholder="OFF" class="${bad?"bad":""}"></td>`;}).join("")}
+    <td><button class="iconbtn" data-rm="${i}" style="width:34px;height:34px;font-size:14px" aria-label="Remove employee">✕</button></td></tr>`).join("");
+  return `${brandCard()}
+  <div class="chips">${S.stores.map((s,i)=>`<button class="pill ${s.id===S.editStore?"on":""}" data-edstore="${esc(s.id)}">${esc(s.name)}</button>`).join("")}</div>
+  <div class="banner">This is the <b>regular weekly schedule</b> for ${esc(store.name)}. It repeats every week. For a one-time change, tap the cell in the Week view instead. Type times like <b>9AM - 6PM</b>, or OFF, FMLA, Closed.</div>
+  <div class="card"><div class="card-h"><h3>Store name</h3>${S.readOnly?"":`<button class="btn ghost sm" id="addStore">+ New store</button>`}</div><div class="form"><input id="stName" value="${esc(draft.name)}"></div></div>
+  <div class="card"><div class="card-h"><h3>Regular week</h3><span class="count">${draft.employees.length} people</span></div>
+    <div class="gridwrap"><table class="ed"><tr><th>Name</th>${DAYS_LONG.map(d=>`<th>${d}</th>`).join("")}<th></th></tr>${rows}</table></div>
+    <div style="padding:10px 18px 16px"><button class="btn ghost sm" id="addEmp">+ Add employee</button></div>
+  </div>
+  <div class="card" style="display:flex;gap:8px;padding:12px">
+    <button class="btn ghost" id="revert" style="flex:1">Discard</button>
+    <button class="btn" id="saveStore" style="flex:2" ${S.readOnly?"disabled":""}>Save regular week</button>
+  </div>`;
+}
+
+/* ---------- cell editor ---------- */
+function openCell(storeId,empId,date){
+  const store=storeById(storeId);if(!store)return;
+  const emp=store.employees.find(e=>e.id===empId);if(!emp)return;
+  const c=effective(store,emp,date);
+  const regular=(emp.days||[])[dow(date)]||"OFF";
+  const ro=S.readOnly;
+  const quick=["9AM - 6PM","10AM - 7PM","9AM - 5:30PM","11AM - 5:30PM","9AM - 5PM","9AM - 3PM","OFF"];
+  openSheet(`<div class="sheet-h"><h3>${esc(emp.name)}</h3><button class="iconbtn" data-close aria-label="Close">✕</button></div>
+  <div class="form">
+    <div style="font-size:13px;color:var(--muted)">${esc(store.name)} · ${dateLabel(date)}</div>
+    <div style="font-size:13px">Regular ${DAYS_LONG[dow(date)]}: <b>${esc(regular)}</b>${c.changed?` · Changed to <b>${esc(c.raw)}</b>`:""}</div>
+    ${c.pto?`<div class="banner" style="margin:0"><b>On PTO</b> (${esc(c.pto.type||"PTO")}) ${ptoRange(c.pto)}${c.pto.note?": "+esc(c.pto.note):""}</div>`:""}
+    ${ro?"":`<label>Hours for this day only<input id="ovVal" value="${esc(c.changed?c.raw:regular)}"></label>
+    <div class="quick">${quick.map(q=>`<button data-q="${esc(q)}">${esc(q)}</button>`).join("")}</div>`}
+  </div>
+  ${ro?"":`<div class="actions">
+    ${c.changed?`<button class="btn ghost" id="ovReset">Back to regular</button>`:""}
+    <button class="btn" id="ovSave">Save for ${DAYS[dow(date)]} ${fromIso(date).getDate()}</button>
+  </div>
+  <div class="actions">${c.pto?`<button class="btn danger" id="ptoRm">Remove this PTO</button>`:`<button class="btn ghost" id="ptoAdd">Mark PTO for this day</button>`}</div>`}`);
+  const sh=document.getElementById("sheet");
+  sh.querySelector("[data-close]").onclick=closeSheet;
+  sh.querySelectorAll("[data-q]").forEach(b=>b.onclick=()=>{sh.querySelector("#ovVal").value=b.dataset.q;});
+  const save=sh.querySelector("#ovSave");
+  if(save)save.onclick=async()=>{
+    const v=sh.querySelector("#ovVal").value.trim()||"OFF";
+    closeSheet();
+    if(v.toUpperCase()===String(regular).trim().toUpperCase()){if(c.changed&&await setOverride(storeId,empId,date,null))toast("Back to regular schedule");return;}
+    if(await setOverride(storeId,empId,date,v))toast("Saved for "+dateLabel(date));
+  };
+  const reset=sh.querySelector("#ovReset");
+  if(reset)reset.onclick=async()=>{closeSheet();if(await setOverride(storeId,empId,date,null))toast("Back to regular");};
+  const pa=sh.querySelector("#ptoAdd");
+  if(pa)pa.onclick=()=>{S.view="pto";closeSheet();render();setTimeout(()=>{const f=document.getElementById("ptoForm");if(f){f.emp.value=storeId+"|"+empId;f.start.value=date;f.end.value=date;f.scrollIntoView({behavior:"smooth"});}},30);};
+  const pr=sh.querySelector("#ptoRm");
+  if(pr)pr.onclick=async()=>{closeSheet();if(await delPto(c.pto.id))toast("PTO removed");};
+}
+
+function confirmSheet(title,msg,okLabel,fn){
+  openSheet(`<div class="sheet-h"><h3>${esc(title)}</h3></div><div class="form"><div>${msg}</div></div><div class="actions"><button class="btn ghost" data-close>Cancel</button><button class="btn" id="okBtn">${esc(okLabel)}</button></div>`);
+  const sh=document.getElementById("sheet");
+  sh.querySelector("[data-close]").onclick=closeSheet;
+  sh.querySelector("#okBtn").onclick=()=>{closeSheet();fn();};
+}
+
+/* ---------- render + events ---------- */
+function render(){
+  document.querySelectorAll("nav.tabs button").forEach(b=>b.classList.toggle("on",b.dataset.v===S.view));
+  const v=document.getElementById("view");
+  const qFocused=document.activeElement&&document.activeElement.id==="q";
+  const selStart=qFocused?document.activeElement.selectionStart:0;
+  // keep the edit draft safe from live re-renders while typing
+  if(S.view==="edit"&&document.activeElement&&v.contains(document.activeElement)&&document.activeElement.tagName==="INPUT")return;
+  if(!S.stores.length&&!S.offline&&!S.ready.stores){v.innerHTML=`<div class="card"><div class="empty">Loading schedules…</div></div>`;return;}
+  if(!S.stores.length&&S.offline&&S.view!=="pto"){v.innerHTML=`<div class="card"><div class="empty">Open the live site to load your store schedules.</div></div>`;return;}
+  v.className="fade";v.innerHTML=({today:viewToday,week:viewWeek,month:viewMonth,pto:viewPto,edit:viewEdit}[S.view]||viewToday)();
+  if(qFocused){const q=document.getElementById("q");if(q){q.focus();q.setSelectionRange(selStart,selStart);}}
+  subscribeOverrides();
+}
+
+document.querySelector("nav.tabs").addEventListener("click",e=>{
+  const b=e.target.closest("button[data-v]");if(!b)return;
+  S.view=b.dataset.v;draft=null;
+  try{localStorage.setItem("sched.view",S.view);}catch(x){}
+  try{history.replaceState(null,"","#"+S.view);}catch(x){}
+  render();window.scrollTo(0,0);
+});
+window.addEventListener("hashchange",()=>{const h=location.hash.slice(1);if(["today","week","month","pto","edit"].includes(h)&&h!==S.view){S.view=h;render();}});
+
+const view=document.getElementById("view");
+view.addEventListener("click",e=>{
+  const t=e.target;
+  let b;
+  if(b=t.closest("[data-store]")){S.store=b.dataset.store;try{localStorage.setItem("sched.store",S.store);}catch(x){}render();return;}
+  if(b=t.closest("[data-nav]")){S.date=addDays(S.date,+b.dataset.nav);render();return;}
+  if(b=t.closest("[data-mnav]")){const d=fromIso(S.date);S.date=iso(new Date(d.getFullYear(),d.getMonth()+ +b.dataset.mnav,1));render();return;}
+  if(t.closest("[data-search]")){S.showSearch=!(S.showSearch||S.q);if(!S.showSearch)S.q="";render();if(S.showSearch){const q=document.getElementById("q");q&&q.focus();}return;}
+  if(t.closest("[data-go-today]")){S.date=todayIso();render();return;}
+  if(b=t.closest("[data-day]")){S.date=b.dataset.day;S.view="today";render();window.scrollTo(0,0);return;}
+  if(b=t.closest("[data-cell]")){const [s,em,d]=b.dataset.cell.split("|");openCell(s,em,d);return;}
+  if(b=t.closest("[data-delpto]")){const p=S.pto.find(x=>x.id===b.dataset.delpto);if(!p)return;confirmSheet("Remove PTO?",`${esc(p.name)} · ${ptoRange(p)}`,"Remove",async()=>{if(await delPto(p.id))toast("PTO removed");});return;}
+  if(b=t.closest("[data-edstore]")){syncDraft();if(draftDirty()){const target=b.dataset.edstore;confirmSheet("Discard changes?","You have unsaved edits to this store.","Discard",()=>{draft=null;S.editStore=target;render();});return;}draft=null;S.editStore=b.dataset.edstore;render();return;}
+  if(b=t.closest("[data-rm]")){syncDraft();const i=+b.dataset.rm;const nm=draft.employees[i].name||"this employee";confirmSheet("Remove employee?",`Remove ${esc(nm)} from the regular schedule? Click Save after to keep it.`,"Remove",()=>{draft.employees.splice(i,1);forceRender();});return;}
+  if(t.id==="addEmp"){syncDraft();draft.employees.push({id:uid(),name:"",role:"",days:Array(7).fill("OFF")});forceRender();setTimeout(()=>{const ins=view.querySelectorAll("input.nm");ins[ins.length-1]&&ins[ins.length-1].focus();},20);return;}
+  if(t.id==="addStore"){let nm="New store",k=2;while(storeById(slug(nm)))nm="New store "+(k++);const st={id:slug(nm),name:nm,employees:[]};saveStore(st).then(ok=>{if(!ok)return;draft=null;S.editStore=slug(nm);render();toast("Store added. Rename it and add people.");});return;}
+  if(t.id==="revert"){draft=null;forceRender();toast("Changes discarded");return;}
+  if(t.id==="saveStore"){syncDraft();const st=storeById(S.editStore);const out={...st,name:draft.name.trim()||st.name,employees:draft.employees.filter(e=>e.name.trim()).map(e=>({...e,name:e.name.trim(),days:e.days.map(x=>x.trim())}))};saveStore(out).then(ok=>{if(!ok)return;draft=null;S.editStore=slug(out.name);render();toast("Saved "+out.name);});return;}
+});
+function forceRender(){const a=document.activeElement;if(a&&a.blur)a.blur();render();}
+function syncDraft(){
+  if(!draft)return;
+  const n=document.getElementById("stName");if(n)draft.name=n.value;
+  view.querySelectorAll("table.ed tr[data-i]").forEach(tr=>{
+    const e=draft.employees[+tr.dataset.i];if(!e)return;
+    tr.querySelectorAll("input").forEach(inp=>{const f=inp.dataset.f;if(f==="name")e.name=inp.value;else if(f&&f[0]==="d")e.days[+f.slice(1)]=inp.value;});
+  });
+}
+function draftDirty(){const st=storeById(S.editStore);if(!draft||!st)return false;return JSON.stringify({n:draft.name,e:draft.employees})!==JSON.stringify({n:st.name,e:st.employees});}
+view.addEventListener("input",e=>{
+  if(e.target.id==="q"){S.q=e.target.value;render();}
+});
+view.addEventListener("focusout",e=>{if(S.view==="edit"&&e.target.closest("table.ed")){syncDraft();const inp=e.target;const f=inp.dataset.f;if(f&&f[0]==="d"){const c=classify(inp.value);inp.classList.toggle("bad",!!inp.value&&c.kind==="work"&&c.start==null&&!/^(commercial|open)/i.test(inp.value.trim()));}}});
+view.addEventListener("submit",async e=>{
+  if(e.target.id!=="ptoForm")return;
+  e.preventDefault();
+  const f=e.target;
+  if(!f.emp.value)return toast("Choose an employee");
+  const [storeId,empId]=f.emp.value.split("|");
+  let start=f.start.value,end=f.end.value;
+  if(!start||!end)return toast("Pick the dates");
+  if(end<start)[start,end]=[end,start];
+  const st=storeById(storeId);const emp=st&&st.employees.find(x=>x.id===empId);
+  const p={id:uid(),storeId,empId,name:emp?emp.name:"",start,end,type:f.type.value,note:f.note.value.trim(),createdAt:new Date().toISOString()};
+  if(await addPto(p))toast("PTO saved for "+p.name);
+});
+
+setInterval(()=>{if(S.view==="today"&&S.date===todayIso()&&!document.getElementById("scrim").classList.contains("open"))render();},60000);
+
+render();
+connect();
+})();
+</script>
+</body>
+</html>
