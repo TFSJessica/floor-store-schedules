@@ -68,6 +68,22 @@ header.top .sub{font-size:10px;letter-spacing:.08em;text-transform:uppercase;col
 .imp-warn{margin-top:8px;font-size:12px;color:var(--amber);font-weight:600}
 .imp-err{margin-top:8px;font-size:12px;color:var(--red);font-weight:600}
 .imp-foot{position:sticky;bottom:0;background:rgba(255,255,255,.97);padding-top:12px;border-top:1px solid var(--line)}
+details.mp{padding:0}
+details.mp summary{list-style:none;display:flex;align-items:center;gap:10px;padding:13px 16px;cursor:pointer}
+details.mp summary::-webkit-details-marker{display:none}
+details.mp summary b{font-family:"Bebas Neue",sans-serif;font-weight:400;font-size:19px;letter-spacing:.1em}
+.mp-count{margin-left:auto;font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:600;color:var(--muted)}
+.mp-chev{font-size:18px;color:var(--muted);transition:transform .15s}
+details.mp[open] .mp-chev{transform:rotate(90deg)}
+details.mp[open] summary{border-bottom:1px solid var(--line)}
+.mp-row{display:flex;gap:12px;padding:9px 16px;border-top:1px solid var(--line);cursor:pointer;align-items:flex-start}
+.mp-row:first-of-type{border-top:0}
+.mp-row:hover{background:rgba(255,255,255,.5)}
+.mp-when{flex:none;width:118px;font-weight:700;font-size:13px;font-variant-numeric:tabular-nums}
+.mp-who{flex:1;min-width:0;font-size:13px}
+.mp-who .name{font-weight:600}
+.mp-what{font-size:12px;color:var(--pto);font-weight:600;margin-top:1px}
+.mp-what.lv{color:var(--leave)}
 .mgr{display:inline-block;margin-left:6px;font-size:9px;font-weight:700;letter-spacing:.08em;background:#1a1a1a;color:#fff;border-radius:5px;padding:2px 5px;vertical-align:1px;flex:none}
 .savenote{text-align:center;font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;color:var(--muted);margin:4px 0 14px}
 .chgmark{width:6px;height:6px;border-radius:50%;background:var(--brand);margin-left:5px;flex:none}
@@ -345,8 +361,13 @@ async function call(fn,...args){
   return r.json();
 }
 try{S.pin=localStorage.getItem("sched.pin");}catch(e){}
+let seenVersion=null;
 function applyData(d){
   if(!d)return;
+  if(d.version){
+    if(seenVersion&&d.version!==seenVersion&&!(S.view==="edit"&&draftDirty())&&!document.getElementById("scrim").classList.contains("open")){location.reload();return;}
+    seenVersion=d.version;
+  }
   S.stores=(d.stores||[]).map(s=>({...s,employees:(s.employees||[]).map(e=>({...e,days:(e.days||[]).concat(Array(7).fill("")).slice(0,7)}))}));
   S.ov=d.ov||{};S.pto=d.pto||[];S.pinRequired=!!d.pinRequired;
   S.ready.stores=true;S.ready.pto=true;
@@ -537,6 +558,30 @@ function viewWeek(){
   ${cards||`<div class="card"><div class="empty">No matches.</div></div>`}`;
 }
 
+function monthPtoHtml(mStart,mEnd){
+  const mName=MONTHS[fromIso(mStart).getMonth()];
+  const blocks=visibleStores().map(st=>{
+    const items=S.pto.filter(p=>p.storeId===st.id&&p.start<=mEnd&&p.end>=mStart&&matchQ(p.name||""))
+      .map(p=>{const emp=st.employees.find(e=>e.id===p.empId);return {p,name:emp?emp.name:p.name};})
+      .sort((a,b)=>a.p.start.localeCompare(b.p.start)||cleanName(a.name).localeCompare(cleanName(b.name)));
+    const people=new Set(items.map(x=>x.p.empId)).size;
+    let days=0,leaves=0;
+    const rows=items.map(({p,name})=>{
+      const lv=isLeave(p);
+      const s=p.start<mStart?mStart:p.start,e=p.end>mEnd?mEnd:p.end;
+      const n=Math.round((fromIso(e)-fromIso(s))/864e5)+1;if(lv)leaves++;else days+=n;
+      const when=lv?(p.start<mStart?"All month":"From "+shortDate(p.start)):(p.start===p.end?DAYS[dow(p.start)]+", "+shortDate(p.start):ptoRange(p));
+      const what=lv?`${esc(shortType(p.type))} · ${p.returnDate?"back "+shortDate(p.returnDate):"return TBD"}`:`${esc(p.type||"PTO")}${n>1?` · ${n} days`:""}`;
+      return `<div class="mp-row" data-editpto="${esc(p.id)}"><div class="mp-when">${when}</div><div class="mp-who">${nameHtml(name)}<div class="mp-what ${lv?"lv":""}">${what}${p.note?" · "+esc(p.note):""}</div></div></div>`;
+    }).join("");
+    const open=S.openMonth&&S.openMonth[st.id];
+    return `<details class="card mp" data-mp="${esc(st.id)}" ${open?"open":""} style="--sc:${storeColor(st)}">
+      <summary><span class="dot" style="background:${storeColor(st)}"></span><b>${esc(st.name)}</b><span class="mp-count">${items.length?[days?`${days} PTO ${days===1?"day":"days"}`:"",leaves?`${leaves} on leave`:""].filter(Boolean).join(" · "):"No PTO"}</span><span class="mp-chev">›</span></summary>
+      ${items.length?rows:`<div class="empty">No PTO in ${mName}.</div>`}
+    </details>`;
+  }).join("");
+  return `<div class="section-title" style="display:flex;align-items:center">${mName} PTO by store<span style="flex:1"></span><button class="pill" data-mp-all>${Object.values(S.openMonth||{}).some(Boolean)?"Collapse all":"Expand all"}</button></div>${blocks}`;
+}
 function viewMonth(){
   const first=S.date.slice(0,8)+"01";
   const f=fromIso(first);
@@ -550,7 +595,7 @@ function viewMonth(){
     visibleStores().forEach(store=>store.employees.forEach(emp=>{
       if(!matchQ(emp.name))return;
       const c=effective(store,emp,d);
-      if(c.pto)ptos.push(emp.name.split(" ")[0]);
+      if(c.pto){if(!isLeave(c.pto))ptos.push(cleanName(emp.name).split(" ")[0]);}
       else if(c.kind==="work")n++;
     }));
     const other=monthKey(d)!==monthKey(first);
@@ -567,7 +612,8 @@ function viewMonth(){
     <button class="iconbtn" data-mnav="1" aria-label="Next month">›</button>
   </div></div>
   ${storeChips()}
-  <div class="card"><div class="mgrid">${DAYS.map(x=>`<div class="mhead">${x}</div>`).join("")}${cells.join("")}</div></div>`;
+  <div class="card"><div class="mgrid">${DAYS.map(x=>`<div class="mhead">${x}</div>`).join("")}${cells.join("")}</div></div>
+  ${monthPtoHtml(first,addDays(nextMonth,-1))}`;
 }
 
 function empOptions(selStore,selEmp){
@@ -953,6 +999,7 @@ view.addEventListener("click",e=>{
   if(b=t.closest("[data-day]")){S.date=b.dataset.day;S.view="today";render();window.scrollTo(0,0);return;}
   if(b=t.closest("[data-cell]")){const [s,em,d]=b.dataset.cell.split("|");openCell(s,em,d);return;}
   if(t.id==="impOpen"){openImport();return;}
+  if(t.closest("[data-mp-all]")){const any=Object.values(S.openMonth||{}).some(Boolean);S.openMonth={};if(!any)visibleStores().forEach(st=>S.openMonth[st.id]=true);render();return;}
   if(!t.closest("[data-delpto]")&&(b=t.closest("[data-editpto]"))){openPtoEdit(S.pto.find(x=>x.id===b.dataset.editpto));return;}
   if(b=t.closest("[data-delpto]")){const p=S.pto.find(x=>x.id===b.dataset.delpto);if(!p)return;confirmSheet("Remove PTO?",`${esc(p.name)} · ${ptoRange(p)}`,"Remove",async()=>{if(await delPto(p.id))toast("PTO removed");});return;}
   if(b=t.closest("[data-edstore]")){const target=b.dataset.edstore;syncDraft();flushSave().then(()=>{draft=null;S.editStore=target;render();});return;}
@@ -971,6 +1018,7 @@ function syncDraft(){
   });
 }
 function draftDirty(){const st=storeById(S.editStore);if(!draft||!st)return false;return JSON.stringify({n:draft.name,e:draft.employees})!==JSON.stringify({n:st.name,e:st.employees});}
+view.addEventListener("toggle",e=>{const d=e.target;if(d.matches&&d.matches("details[data-mp]")){S.openMonth=S.openMonth||{};S.openMonth[d.dataset.mp]=d.open;const b=view.querySelector("[data-mp-all]");if(b)b.textContent=Object.values(S.openMonth).some(Boolean)?"Collapse all":"Expand all";}},true);
 view.addEventListener("change",e=>{
   const f=e.target.form;
   if(f&&f.id==="ptoForm"&&e.target.name==="type"){
