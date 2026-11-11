@@ -34,13 +34,14 @@ async function load(store) {
   return { stores, ov, pto };
 }
 
-export default async (req) => {
+export default async (req, context) => {
+  const version = (context && context.deploy && context.deploy.id) || process.env.DEPLOY_ID || "";
   const store = getStore({ name: STORE_NAME, consistency: "strong" });
   const pin = managerPin();
 
   if (req.method === "GET") {
     const d = await load(store);
-    return json({ ...d, pinRequired: !!pin });
+    return json({ ...d, pinRequired: !!pin, version });
   }
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
@@ -143,7 +144,7 @@ export default async (req) => {
     default:
       return json({ error: "Unknown action" }, 400);
   }
-  return json({ ...d, pinRequired: !!pin });
+  return json({ ...d, pinRequired: !!pin, version });
 };
 
 /* Starting schedules, from "Full Store Schedule" in Canva. Used only the first time the site runs. */
